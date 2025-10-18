@@ -1,0 +1,19 @@
+{
+  "name": "agent-frontend-native",
+  "version": "1.0.0",
+  "description": "Native DAG viewer for the Deep Research Agent",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "agent",
+    "dag",
+    "frontend",
+    "llm"
+  ],
+  "author": "Roman Bessouat",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
