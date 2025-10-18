@@ -80,6 +80,7 @@ class AgentManager:
             context_block = "\n\nContext (JSON):\n" + json.dumps(extra_context, ensure_ascii=False)
         prompt = f"{user_query}{context_block}"
         raw = retry_call(self.llm.generate, prompt, policy=self.cfg.llm_retry)
+        print("RAW OUTPUT:\n", raw)
         clean = extract_json_str(raw)
         return json.loads(clean)
 
