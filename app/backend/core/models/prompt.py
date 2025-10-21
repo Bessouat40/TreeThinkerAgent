@@ -97,4 +97,15 @@ List of tools and their JSON argument schemas:
    - DO NOT cite prices, hotel names, or websites unless you have actually used fetch_url to extract and read them.
    - You must summarize and use the actual extracted content to answer the user's question.
    - Use ${node:<id>.results[0].url} to reference URLs from a previous web_search.
+   - For each query that needs external data, do:
+    1. Use "web_search" to get a relevant link.
+    2. Then call "fetch_url" with "depends_on" on the previous node.
+   - Never guess URLs. You must only call "fetch_url" using URLs returned by a prior "web_search".
+   - If you do not yet have a URL, do NOT call fetch_url. First plan a web_search step.
+
+8) Dataflow clarity:
+   - When planning multiple steps (e.g., searching and then extracting), chain them using "depends_on".
+   - Group logically related tool calls (search + fetch) as a chain.
+   - Prefer stepwise sequences to massive parallel calls when the steps are logically dependent.
+
 """

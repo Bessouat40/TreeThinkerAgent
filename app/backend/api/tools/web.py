@@ -1,9 +1,13 @@
+import json
 from pydantic import BaseModel, Field
-from typing import Optional
-from app.backend.core.tool import tool
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
+import requests
+from bs4 import BeautifulSoup
+from pydantic import BaseModel, Field
+
+from app.backend.core.agent.tool import tool
 
 
 class WebSearchArgs(BaseModel):
@@ -54,17 +58,10 @@ def web_search(args: WebSearchArgs) -> dict:
             if len(results) >= args.max_results:
                 break
 
-        return {"results": results}
+        return json.loads(json.dumps({"results": results}))
 
     except Exception as e:
         return {"error": str(e)}
-
-import requests
-from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field
-
-from app.backend.core.tool import tool
-
 
 class FetchURLArgs(BaseModel):
     url: str = Field(..., description="URL d'une page web à lire")
@@ -76,6 +73,6 @@ def fetch_url(args: FetchURLArgs) -> dict:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         text = soup.get_text(separator="\n", strip=True)
-        return {"text": text[:10_000]}
+        return json.loads(json.dumps({"text": text[:10_000]}))
     except Exception as e:
         return {"error": str(e)}

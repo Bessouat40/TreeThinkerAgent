@@ -130,13 +130,32 @@ function buildLayout(state) {
   };
 }
 
-function withRoot(state, label) {
-  const ROOT = '__root__',
-    nodes = {};
-  for (const [id, n] of Object.entries(state.nodes)) {
-    const deps = n.depends_on?.length ? n.depends_on.slice() : [ROOT];
-    nodes[id] = { ...n, depends_on: deps };
+function withRootRecursive(state, label) {
+  const ROOT = '__root__';
+  const nodes = {};
+  const hasParent = new Set();
+
+  // Détecter les dépendances explicites
+  for (const node of Object.values(state.nodes)) {
+    for (const dep of node.depends_on || []) {
+      hasParent.add(dep);
+    }
   }
+
+  // Injecter des dépendances implicites via les champs `parent`
+  for (const [id, node] of Object.entries(state.nodes)) {
+    const parent = node.parent;
+    const deps = new Set(node.depends_on || []);
+    if (parent && state.nodes[parent]) {
+      deps.add(parent);
+      hasParent.add(id);
+    } else if (!deps.size && !hasParent.has(id)) {
+      deps.add(ROOT);
+    }
+    nodes[id] = { ...node, depends_on: Array.from(deps) };
+  }
+
+  // Ajoute un noeud virtuel racine
   nodes[ROOT] = {
     id: ROOT,
     name: label || 'User Request',
@@ -144,6 +163,7 @@ function withRoot(state, label) {
     depends_on: [],
     status: 'done',
   };
+
   return { ...state, nodes, __root__: ROOT };
 }
 
@@ -196,7 +216,7 @@ function render(state) {
   const label = (
     document.getElementById('query')?.value || 'User Request'
   ).trim();
-  const view = withRoot(state, label);
+  const view = withRootRecursive(state, label);
   const { positions, width, height } = buildLayout(view);
 
   edgesSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -250,17 +270,18 @@ function render(state) {
     el.style.left = pos.x + 'px';
     el.style.top = pos.y + 'px';
     const fn = n.name; // function name (tool)
-    const thought = n.result?.thought || n.result?.reasoning || ''; // facultatif si tu fournis
+    const thought = n.thought || n.result?.thought || n.result?.reasoning || '';
     const argsLine =
-      n.args && Object.keys(n.args).length
+      n.args && typeof n.args === 'object'
         ? `args: ${short(n.args)}`
-        : 'args: {}';
+        : 'args: —';
     const resLine =
       n.result != null
         ? `result: ${short(n.result)}`
         : n.error
         ? `error: ${short(n.error)}`
         : 'result: —';
+
     el.innerHTML = `
       <div class="title">${esc(fn)}</div>
       <div class="status">${root ? 'source' : esc(n.status)}</div>

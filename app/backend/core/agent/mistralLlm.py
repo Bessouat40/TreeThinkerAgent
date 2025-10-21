@@ -3,10 +3,10 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from app.backend.core.llm import LLM
-from app.backend.schemas.prompt import SYSTEM_PROMPT
 
 from mistralai import Mistral
+
+from app.backend.core.agent.llm import LLM
 
 
 class MistralLLM(LLM):

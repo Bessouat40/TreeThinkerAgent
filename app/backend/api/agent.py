@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.backend.api.tools.web import fetch_url, web_search
 from app.backend.core.mistralLlm import MistralLLM
-from app.backend.core.manager import AgentManager, AgentManagerConfig
 from app.backend.core.tool import tool
+from app.backend.core.manager import AgentManager
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -23,19 +23,28 @@ class AgentRequest(BaseModel):
 @router.post("/run")
 async def run_agent(req: AgentRequest):
     # try:
-    llm = MistralLLM(model_name="mistral-medium-2508")
+    llm = MistralLLM(model_name="codestral-2508")
     llm.register_decorated_tool(add_a_b)
     llm.register_decorated_tool(web_search)
     llm.register_decorated_tool(fetch_url)
 
-    cfg = AgentManagerConfig(max_loops=4)
-    manager = AgentManager(llm, cfg)
+    manager = AgentManager(llm)
 
     state = manager.run(req.query)
+    print('state: ', state)
     return {
         "final": state.final,
-        "nodes": {nid: n.__dict__ for nid, n in state.nodes.items()},
+        "nodes": {
+            nid: {
+                **n.__dict__,
+                "parent": n.parent,
+                "children": n.children,
+            }
+            for nid, n in state.nodes.items()
+        },
         "trace": state.trace,
+        "root": state.root
     }
+
     # except Exception as e:
     #     raise HTTPException(status_code=500, detail=str(e))

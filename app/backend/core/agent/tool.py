@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any, Callable, Optional, Type, TypeVar, Dict
 from pydantic import BaseModel
-from app.backend.core.llm import LLM
 
 import json
 import re
@@ -53,6 +52,13 @@ def extract_json_str(
         pass
 
     snippet = s[:max_scan_chars]
+    json_candidates = re.findall(r"\{[\s\S]*?\}", snippet)
+    for candidate in json_candidates:
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            continue
     m = re.search(r"\{[\s\S]*\}", snippet)
     if not m:
         raise JSONExtractError("No JSON object found in model output.")

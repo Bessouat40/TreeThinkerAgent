@@ -4,8 +4,7 @@ import json
 from typing import Any, Dict, List, Optional, Type
 from pydantic import BaseModel
 
-from app.backend.schemas.prompt import SYSTEM_PROMPT
-
+from app.backend.core.models.prompt import SYSTEM_PROMPT
 
 class ToolSpec(BaseModel):
     """Specification for a tool available to the LLM."""
