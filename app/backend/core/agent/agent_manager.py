@@ -15,10 +15,10 @@ class AgentManager:
         else:
             self.plan_each_branch()
 
-    def plan(self, context: str, parent_leaf_id: str):
+    def plan(self, context: str, current_leaf: str):
         prompt = f"""
         Tu es un assistant intelligent. Voici le contexte de raisonnement :
-
+        Feuille courante : {current_leaf}
         {context}
 
         Quelle est la prochaine étape logique ?
@@ -31,4 +31,4 @@ class AgentManager:
     def plan_each_branch(self):
         for leaf in self.reasoning_tree.get_last_leaves():
             context = self.reasoning_tree.get_leaf_context(leaf.id)
-            self.plan(context, parent_leaf_id=leaf.id)
+            self.plan(context, current_leaf=leaf.id)

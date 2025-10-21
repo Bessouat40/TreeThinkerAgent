@@ -1,8 +1,6 @@
 from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
-from app.backend.core.agent.llm import LLM
-from app.backend.core.agent.tool import tool
 from app.backend.core.models.leaf import Leaf
 from app.backend.core.models.tool_calls import ToolCall
 
@@ -55,7 +53,7 @@ class ReasoningTree:
 
         if leaf.parent_leaf is None:
             tool_context = "\n".join(str(tc) for tc in leaf.tool_calls)
-            return f"{leaf.description}\n{tool_context}".strip()
+            return f"Current Leaf : {leaf.id}\n{leaf.description}\n{tool_context}".strip()
 
         parent_context = self.get_leaf_context(leaf.parent_leaf)
         tool_context = "\n".join(str(tc) for tc in leaf.tool_calls)

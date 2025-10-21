@@ -1,5 +1,4 @@
 from app.backend.core.models.tool_calls import ToolCall
-from app.backend.core.models.leaf import Leaf
 from app.backend.core.reasoningTree.reasoning_tree import ReasoningTree
 
 tree = ReasoningTree("Je veux organiser un voyage à Madrid.")
