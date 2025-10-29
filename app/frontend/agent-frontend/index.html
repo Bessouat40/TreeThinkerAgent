@@ -4,202 +4,9 @@
     <meta charset="UTF-8" />
     <title>Agent DAG (native)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      :root {
-        --bg: #f8fafc;
-        --panel: #ffffff;
-        --border: #e5e7eb;
-        --text: #111827;
-        --muted: #6b7280;
-        --done: #dcfce7;
-        --running: #dbeafe;
-        --error: #fee2e2;
-        --pending: #f3f4f6;
-        --node-w: 240px;
-        --node-h: 72px;
-        --col-gap: 140px;
-        --row-gap: 26px;
-      }
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      }
-      .appbar {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid var(--border);
-        background: var(--panel);
-        position: sticky;
-        top: 0;
-        z-index: 2;
-      }
-      .appbar input,
-      .appbar button {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px 10px;
-        background: white;
-      }
-      .appbar button {
-        background: #111827;
-        color: white;
-        cursor: pointer;
-      }
-      .muted {
-        color: var(--muted);
-      }
-
-      .canvas {
-        position: relative;
-        height: calc(100% - 52px);
-        overflow: hidden;
-        background: repeating-linear-gradient(
-          0deg,
-          #f5f7fa,
-          #f5f7fa 24px,
-          #f0f3f7 24px,
-          #f0f3f7 25px
-        );
-      }
-      .viewport {
-        position: absolute;
-        inset: 0;
-        transform-origin: 0 0;
-      }
-
-      .node {
-        position: absolute;
-        width: var(--node-w);
-        min-height: var(--node-h);
-        background: var(--pending);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-        padding: 8px 10px;
-        user-select: none;
-      }
-      .node .title {
-        font-weight: 600;
-      }
-      .node .status {
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .node.done {
-        background: var(--done);
-      }
-      .node.running {
-        background: var(--running);
-      }
-      .node.error {
-        background: var(--error);
-      }
-      .node.pending {
-        background: var(--pending);
-      }
-      .node .details {
-        margin-top: 6px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-          monospace;
-        font-size: 12px;
-        white-space: pre-wrap;
-        display: none;
-      }
-      .node.expanded .details {
-        display: block;
-      }
-
-      svg.edges {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-      }
-
-      /* Final answer: toujours visible en bas à droite */
-      .final-panel {
-        position: fixed;
-        right: 16px;
-        bottom: 16px;
-        width: min(520px, 90vw);
-        max-height: 60vh;
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-        display: flex;
-        flex-direction: column;
-        z-index: 10;
-      }
-      .final-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        font-weight: 600;
-      }
-      .final-content {
-        margin: 0;
-        padding: 12px;
-        white-space: pre-wrap;
-        overflow: auto;
-        max-height: 50vh;
-        font-size: 13px;
-        background: #f9fafb;
-        border-radius: 0 0 12px 12px;
-      }
-
-      /* Node details panel (shift+click) */
-      .node-panel {
-        position: fixed;
-        left: 16px;
-        bottom: 16px;
-        width: min(520px, 90vw);
-        max-height: 60vh;
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-        display: none;
-        flex-direction: column;
-        z-index: 10;
-      }
-      .node-panel.open {
-        display: flex;
-      }
-      .node-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        font-weight: 600;
-      }
-      .node-close {
-        border: 1px solid var(--border);
-        background: #f9fafb;
-        border-radius: 8px;
-        padding: 4px 8px;
-        cursor: pointer;
-      }
-      .node-content {
-        margin: 0;
-        padding: 12px;
-        white-space: pre-wrap;
-        overflow: auto;
-        max-height: 50vh;
-        font-size: 13px;
-        background: #f9fafb;
-        border-radius: 0 0 12px 12px;
-      }
-    </style>
+    <link rel="stylesheet" href="./styles.css" />
   </head>
+
   <body>
     <div class="appbar">
       <input
@@ -223,13 +30,13 @@
       </div>
     </div>
 
-    <!-- Final answer: toujours visible -->
+    <!-- Final answer -->
     <div class="final-panel" id="finalPanel">
       <div class="final-header">Final answer</div>
       <pre class="final-content" id="finalContent">No answer yet.</pre>
     </div>
 
-    <!-- Node details (Shift+Click pour ouvrir) -->
+    <!-- Node details (Shift+Click) -->
     <div class="node-panel" id="nodePanel">
       <div class="node-header">
         <div>Node details</div>

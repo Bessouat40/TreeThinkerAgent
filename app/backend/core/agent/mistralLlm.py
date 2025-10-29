@@ -7,6 +7,7 @@ from typing import Optional
 from mistralai import Mistral
 
 from app.backend.core.agent.llm import LLM
+from app.backend.core.models.prompt import SYSTEM_PROMPT
 
 
 class MistralLLM(LLM):
@@ -35,11 +36,11 @@ class MistralLLM(LLM):
         Send a message to the Mistral model and return the generated text
         (expected to be a JSON string that follows the Agent schema).
         """
-        sp = self._compose_system_prompt(system_prompt)
+        system_prompt = system_prompt or self._compose_system_prompt(SYSTEM_PROMPT)
         resp = self.client.chat.complete(
             model=self.model_name,
             messages=[
-                {"role": "system", "content": sp},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_input},
             ],
         )

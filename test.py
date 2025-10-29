@@ -49,3 +49,4 @@ tree.add_leaf(
 )
 
 print(tree.get_reasoning_tree_context())
+print(tree.leaves)

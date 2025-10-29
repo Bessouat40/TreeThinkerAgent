@@ -20,7 +20,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(agent_router, prefix="/api")
+    app.include_router(agent_router, prefix="/api/agent")
 
     @app.get("/")
     async def root():

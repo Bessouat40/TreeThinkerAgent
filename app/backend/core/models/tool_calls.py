@@ -16,3 +16,8 @@ class ToolCall:
             f"Arguments:\n{args_lines}\n"
             f"Result:\n{result_line}\n"
         )
+
+@dataclass
+class ToolResult:
+    tool: ToolCall
+    result: str
