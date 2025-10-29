@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Any, Dict, List
 
 from app.backend.core.models.tool_calls import ToolCall, ToolResult
 

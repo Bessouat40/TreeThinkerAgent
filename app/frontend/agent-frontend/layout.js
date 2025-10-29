@@ -1,9 +1,9 @@
 // layout.js
 
-export const NODE_W = 240;
-export const NODE_H = 72;
-export const COL_GAP = 140;
-export const ROW_GAP = 26;
+export const NODE_W = 220; // aligné avec --node-w
+export const NODE_H = 64; // aligné avec --node-h
+export const COL_GAP = 120; // aligné avec --col-gap
+export const ROW_GAP = 24; // aligné avec --row-gap
 
 export function esc(s) {
   return String(s)

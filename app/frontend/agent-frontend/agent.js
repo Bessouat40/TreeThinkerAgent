@@ -9,6 +9,7 @@ import {
   NODE_H,
 } from './layout.js';
 
+// 🔁 Restaure TOUTES les refs DOM manquantes
 const viewport = document.getElementById('viewport');
 const nodesLayer = document.getElementById('nodesLayer');
 const edgesSvg = document.getElementById('edges');
@@ -21,16 +22,43 @@ const nodePanel = document.getElementById('nodePanel');
 const nodeContent = document.getElementById('nodeContent');
 const closeNode = document.getElementById('closeNode');
 
+const fitBtn = document.getElementById('fitBtn'); // NEW
+const zoomInBtn = document.getElementById('zoomInBtn'); // NEW
+const zoomOutBtn = document.getElementById('zoomOutBtn'); // NEW
+const hudFit = document.getElementById('hudFit'); // NEW
+const hudZoomIn = document.getElementById('hudZoomIn'); // NEW
+const hudZoomOut = document.getElementById('hudZoomOut'); // NEW
+
 // ------- Pan / Zoom -------
 let scale = 1,
   origin = { x: 20, y: 40 },
   isPanning = false,
   panStart = { x: 0, y: 0 };
 
+function applyZoomDensity() {
+  // NEW: simplifie l’UI quand on est loin
+  document.body.classList.toggle('zoomed-out', scale < 0.8);
+}
+
 function updateTransform() {
   viewport.style.transform = `translate(${origin.x}px,${origin.y}px) scale(${scale})`;
+  applyZoomDensity(); // NEW
 }
 updateTransform();
+
+function setScale(next, cx, cy) {
+  // NEW: zoom centré
+  const prev = scale;
+  scale = Math.min(2.5, Math.max(0.4, next));
+  if (cx != null && cy != null) {
+    const rect = viewport.getBoundingClientRect();
+    const x = cx - rect.left,
+      y = cy - rect.top;
+    origin.x = x - (x - origin.x) * (scale / prev);
+    origin.y = y - (y - origin.y) * (scale / prev);
+  }
+  updateTransform();
+}
 
 viewport.addEventListener('mousedown', (e) => {
   if (e.target.classList.contains('node')) return;
@@ -49,17 +77,55 @@ window.addEventListener(
   (e) => {
     if (!e.ctrlKey) return;
     e.preventDefault();
-    const prev = scale;
-    scale = Math.min(2.5, Math.max(0.4, scale * (e.deltaY > 0 ? 0.9 : 1.1)));
-    const rect = viewport.getBoundingClientRect(),
-      cx = e.clientX - rect.left,
-      cy = e.clientY - rect.top;
-    origin.x = cx - (cx - origin.x) * (scale / prev);
-    origin.y = cy - (cy - origin.y) * (scale / prev);
-    updateTransform();
+    const next = scale * (e.deltaY > 0 ? 0.9 : 1.1);
+    setScale(next, e.clientX, e.clientY);
   },
   { passive: false }
 );
+
+// NEW: Buttons
+function zoomIn() {
+  setScale(scale * 1.15, window.innerWidth / 2, window.innerHeight / 2);
+}
+function zoomOut() {
+  setScale(scale / 1.15, window.innerWidth / 2, window.innerHeight / 2);
+}
+
+function fitToContent() {
+  // NEW: calcule un fit simple sur edgesSvg bbox
+  const box = edgesSvg.getBBox
+    ? edgesSvg.getBBox()
+    : { x: 0, y: 0, width: 1000, height: 600 };
+  const pad = 60;
+  const vw = window.innerWidth - pad * 2;
+  const vh = window.innerHeight - 120 - pad * 2; // moins appbar + pad
+  const sx = vw / (box.width + pad * 2);
+  const sy = vh / (box.height + pad * 2);
+  const s = Math.max(0.45, Math.min(1.8, Math.min(sx, sy)));
+  scale = s;
+  origin = {
+    x: pad - box.x * s + 10,
+    y: 70 + pad - box.y * s,
+  };
+  updateTransform();
+}
+
+zoomInBtn?.addEventListener('click', zoomIn);
+zoomOutBtn?.addEventListener('click', zoomOut);
+fitBtn?.addEventListener('click', fitToContent);
+hudZoomIn?.addEventListener('click', zoomIn);
+hudZoomOut?.addEventListener('click', zoomOut);
+hudFit?.addEventListener('click', fitToContent);
+
+function safeToolText(v, max = 220) {
+  try {
+    if (typeof v === 'object' && v !== null)
+      return esc(short(JSON.stringify(v, null, 2), max));
+    return esc(short(String(v), max));
+  } catch {
+    return esc(short(String(v), max));
+  }
+}
 
 // ------- Render -------
 function render(state) {
@@ -94,7 +160,7 @@ function render(state) {
   marker.setAttribute('refY', '3');
   const ap = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   ap.setAttribute('d', 'M0,0 L8,3 L0,6 z');
-  ap.setAttribute('fill', '#9ca3af');
+  ap.setAttribute('fill', '#94a3b8');
   marker.appendChild(ap);
   defs.appendChild(marker);
   edgesSvg.appendChild(defs);
@@ -108,9 +174,9 @@ function render(state) {
       p.setAttribute('d', edgePath(from, to));
       p.setAttribute('marker-end', 'url(#arrow)');
       p.setAttribute('fill', 'none');
-      p.setAttribute('stroke', '#9ca3af');
-      p.setAttribute('stroke-width', '2');
-      p.setAttribute('stroke-dasharray', '6 6');
+      p.setAttribute('stroke', '#94a3b8');
+      p.setAttribute('stroke-width', '1.8');
+      p.setAttribute('stroke-dasharray', '5 5');
       p.setAttribute('opacity', '0.9');
       edgesSvg.appendChild(p);
     }
@@ -125,22 +191,31 @@ function render(state) {
     el.style.left = `${pos.x}px`;
     el.style.top = `${pos.y}px`;
 
-    // Tools
     const toolsHTML = (n.tool_calls || [])
       .map(
         (t) => `
-        <div class="tool">
-          <div class="tool-name">🧩 ${esc(t.tool_name)}</div>
-          <div class="tool-result">${short(
-            t.result || '(no result)',
-            200
-          )}</div>
-        </div>`
+  <div class="tool">
+    <div class="tool-name">🧩 ${esc(t.tool_name)}</div>
+    <div class="tool-result">${safeToolText(
+      t.result ?? '(no result)',
+      220
+    )}</div>
+  </div>
+`
       )
       .join('');
 
+    // badge: nb enfants / outils
+    const badge = `${n.children?.length || 0}·${n.tool_calls?.length || 0}`;
+
     el.innerHTML = `
-      <div class="title">${esc(n.name || 'Untitled')}</div>
+      <div class="row">
+        <span class="dot"></span>
+        <div class="title" title="${esc(n.name || 'Untitled')}">${esc(
+      n.name || 'Untitled'
+    )}</div>
+        <span class="badge" title="children·tools">${badge}</span>
+      </div>
       <div class="description">${esc(n.description || '(aucun résultat)')}</div>
       ${toolsHTML ? `<div class="tools">${toolsHTML}</div>` : ''}
     `;
@@ -171,8 +246,10 @@ function render(state) {
     finalContent.textContent = 'No answer yet.';
     statusEl.textContent = 'Ready.';
   }
-}
 
+  // auto-fit au premier rendu après execution
+  fitToContent(); // NEW: pour rendre lisible immédiatement
+}
 // ------- Backend -------
 async function runAgent() {
   const url = apiBaseEl.value.trim();
@@ -180,7 +257,7 @@ async function runAgent() {
   statusEl.textContent = 'Running…';
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch('http://localhost:8000/api/agent/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),

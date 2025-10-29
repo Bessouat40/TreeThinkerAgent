@@ -24,7 +24,7 @@ router = APIRouter()
 
 @router.post("/run")
 async def run_agent(req: AgentRequest):
-    # # try:
+    # try:
     # llm = MistralLLM(model_name="codestral-2508")
 
     # llm.register_decorated_tool(web_search)
