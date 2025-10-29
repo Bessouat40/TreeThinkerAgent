@@ -3,7 +3,9 @@ from pydantic import BaseModel
 from app.backend.api.tools.web import fetch_url, web_search
 from app.backend.core.agent.agent_manager import AgentManager
 from app.backend.core.agent.mistralLlm import MistralLLM
+from app.backend.core.agent.openaiLlm import OpenAILLM
 from app.backend.core.agent.tool import tool
+
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -25,7 +27,8 @@ router = APIRouter()
 @router.post("/run")
 async def run_agent(req: AgentRequest):
     # try:
-    llm = MistralLLM(model_name="codestral-2508")
+    # llm = MistralLLM(model_name="mistral-medium-2508")
+    llm = OpenAILLM(model_name="gpt-4o")
 
     llm.register_decorated_tool(web_search)
     llm.register_decorated_tool(fetch_url)

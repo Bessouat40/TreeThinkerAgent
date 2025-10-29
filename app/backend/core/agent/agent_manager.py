@@ -70,8 +70,6 @@ class AgentManager:
 
             result = self.llm.generate(user_input=user_input.strip(), system_prompt=FILL_RESULT_PROMPT.strip())
 
-
-            # ➜ on crée la feuille et on récupère son id
             new_leaf_id = self.reasoning_tree.add_leaf(
                 description=step.description,
                 parent_leaf=parent_leaf_id,
@@ -79,13 +77,10 @@ class AgentManager:
                 result=result
             )
 
-            # ➜ profondeur réelle de la branche (root→new_leaf_id)
             branch_depth = self.reasoning_tree.get_branch_depth(new_leaf_id)
             if branch_depth >= max_branch_len:
-                # on coupe cette branche proprement
                 continue
 
-            # ➜ sinon, on descend sur CETTE branche uniquement
             enriched_context = self.reasoning_tree.get_leaf_context(new_leaf_id)
             self.plan(enriched_context, parent_leaf_id=new_leaf_id, max_branch_len=max_branch_len)
 
