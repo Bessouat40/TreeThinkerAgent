@@ -1,6 +1,8 @@
 # Deep Research Agent
 
-Deep Research Agent is an experimental stack that lets a large language model plan, execute, and track multi-step research tasks. The backend exposes a FastAPI service that orchestrates tool calls and maintains a reasoning tree, while the frontend visualises the agent's thought process.
+Deep Research Agent is a lightweight orchestration layer that turns any LLM into an autonomous research agent. It supports multi-step planning, tool execution, and final synthesis — while exposing the entire reasoning process as a tree you can explore.
+
+This project is lightweight and doesn't use libraries such as LangChain, LlamaIndex, smolagents,...
 
 ## Key Features
 
@@ -36,7 +38,7 @@ app/
 │   ├── core/           # Agent manager, models, reasoning tree, LLM wrappers
 │   └── main.py         # FastAPI application factory
 └── frontend/
-    └── agent-frontend/ # React app for visualising the reasoning tree
+    └── agent-frontend/ # Frontend app for visualising the reasoning tree
 ```
 
 ## Getting Started
@@ -45,24 +47,23 @@ app/
 
 ```bash
 # Backend
-pip install -r requirements.txt  # if you maintain one
+pip install uv
+uv sync
 
 # Frontend
 cd app/frontend/agent-frontend
 npm install
 ```
 
-> ℹ️ The repository does not ship with pinned Python dependencies. Install FastAPI, Uvicorn, Requests, BeautifulSoup4, and the SDK for your target LLM provider.
-
 ### 2. Configure environment variables
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | API key for OpenAI models. | – |
-| `OPENAI_MODEL` | Name of the OpenAI model. | `gpt-4o` |
-| `MISTRAL_API_KEY` | API key for Mistral models. | – |
-| `MISTRAL_MODEL` | Name of the Mistral model. | `mistral-medium-2508` |
-| `LLM_PROVIDER` | `openai` or `mistral`. Determines which backend is used. | `openai` |
+| Variable          | Description                                              | Default               |
+| ----------------- | -------------------------------------------------------- | --------------------- |
+| `OPENAI_API_KEY`  | API key for OpenAI models.                               | –                     |
+| `OPENAI_MODEL`    | Name of the OpenAI model.                                | `gpt-4o`              |
+| `MISTRAL_API_KEY` | API key for Mistral models.                              | –                     |
+| `MISTRAL_MODEL`   | Name of the Mistral model.                               | `mistral-medium-2508` |
+| `LLM_PROVIDER`    | `openai` or `mistral`. Determines which backend is used. | `openai`              |
 
 ### 3. Run the backend
 
@@ -115,13 +116,12 @@ These scripts are not automated tests but are useful when modifying core compone
 
 ## Frontend Notes
 
-The React application under `app/frontend/agent-frontend` was bootstrapped with Create React App. It expects the FastAPI backend to run on port 8000 and can be customised to visualise the reasoning tree returned by `/api/agent/run`.
+Frontend expects the FastAPI backend to run on port 8000 and can be customised to visualise the reasoning tree returned by `/api/agent/run`.
 
 ## Contributing
 
 1. Fork the repository and create a feature branch.
-2. Make your changes and ensure linting/tests pass.
-3. Submit a pull request describing the motivation and the resulting behaviour.
+2. Submit a pull request describing the motivation and the resulting behaviour.
 
 ## License
 

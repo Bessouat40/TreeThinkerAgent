@@ -243,7 +243,7 @@ function fitToContent() {
 async function runAgent() {
   try {
     const data = await fetchRun();
-    const leaves = data.reasoning_tree?.leaves || data.leaves || {};
+    const leaves = data.reasoning_tree || {};
     if (!Object.keys(leaves).length) {
       el.status.textContent = 'No leaves returned.';
       toast('No leaves returned.');

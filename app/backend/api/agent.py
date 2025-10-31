@@ -54,6 +54,7 @@ async def run_agent(req: AgentRequest):
 
     manager = AgentManager(user_input=req.query, llm=llm)
     try:
-        return manager.run()
+        result = manager.run()
+        return result
     except Exception as exc:  # pragma: no cover - surfaced to API clients
         raise HTTPException(status_code=500, detail=f"Agent execution failed: {exc}") from exc
