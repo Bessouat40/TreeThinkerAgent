@@ -39,28 +39,22 @@ def web_search(args: WebSearchArgs) -> dict:
                 raw_url = link.get('href') or ''
 
                 clean_url = None
-                # Case 1: redirect url with uddg param
                 try:
                     qs = urllib.parse.parse_qs(urllib.parse.urlparse(raw_url).query)
                     clean_url = qs.get('uddg', [None])[0]
                 except Exception:
                     clean_url = None
 
-                # Case 2: raw_url is already absolute
                 if not clean_url:
                     if raw_url.startswith('http://') or raw_url.startswith('https://'):
                         clean_url = raw_url
                     elif raw_url.startswith('/'):
-                        # relative url -> join with duckduckgo domain
                         clean_url = urllib.parse.urljoin('https://lite.duckduckgo.com', raw_url)
 
                 if not clean_url:
-                    # skip entries we can't resolve
                     continue
 
-                # Try to extract a nearby snippet/description if present
                 desc = ''
-                # common patterns in lite: snippet in a following <td class="result-snippet"> or nearby <div>
                 tr = link.find_parent('tr')
                 if tr:
                     tr_next = tr.find_next_sibling('tr')
@@ -69,7 +63,6 @@ def web_search(args: WebSearchArgs) -> dict:
                         if td:
                             desc = td.get_text(strip=True)
                 if not desc:
-                    # fallback: look for a sibling span or div
                     sib = link.find_next_sibling(['span', 'div'])
                     if sib:
                         desc = sib.get_text(strip=True)
@@ -83,7 +76,6 @@ def web_search(args: WebSearchArgs) -> dict:
                 if len(results) >= args.max_results:
                     break
             except Exception:
-                # be tolerant for individual link parsing failures
                 continue
 
         return {'results': results}

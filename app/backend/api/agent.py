@@ -8,6 +8,7 @@ from app.backend.api.tools.web import fetch_url, web_search
 from app.backend.core.agent.agent_manager import AgentManager
 from app.backend.core.agent.llm import LLM
 from app.backend.core.agent.mistralLlm import MistralLLM
+from app.backend.core.agent.ollamaLlm import OllamaLLM
 from app.backend.core.agent.openaiLlm import OpenAILLM
 from app.backend.core.agent.tool import tool
 
@@ -36,6 +37,10 @@ def _build_llm() -> LLM:
     if provider == "mistral":
         model_name = os.getenv("MISTRAL_MODEL", "mistral-medium-2508")
         return MistralLLM(model_name=model_name)
+    
+    elif provider == "ollama":
+        model_name = os.getenv("OLLAMA_MODEL", "gemma3:12b")
+        return OllamaLLM(model_name=model_name)
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o")
     return OpenAILLM(model_name=model_name)
@@ -46,7 +51,7 @@ async def run_agent(req: AgentRequest):
     """Run the autonomous research agent for the provided query."""
     try:
         llm = _build_llm()
-    except Exception as exc:  # pragma: no cover - defensive guardrail
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to initialize language model: {exc}") from exc
 
     for tool_fn in (web_search, fetch_url, add_a_b):
@@ -56,5 +61,5 @@ async def run_agent(req: AgentRequest):
     try:
         result = manager.run()
         return result
-    except Exception as exc:  # pragma: no cover - surfaced to API clients
+    except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Agent execution failed: {exc}") from exc

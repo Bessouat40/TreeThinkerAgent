@@ -62,13 +62,14 @@ npm install
 
 ### 2. Configure environment variables
 
-| Variable          | Description                                              | Default               |
-| ----------------- | -------------------------------------------------------- | --------------------- |
-| `OPENAI_API_KEY`  | API key for OpenAI models.                               | –                     |
-| `OPENAI_MODEL`    | Name of the OpenAI model.                                | `gpt-4o`              |
-| `MISTRAL_API_KEY` | API key for Mistral models.                              | –                     |
-| `MISTRAL_MODEL`   | Name of the Mistral model.                               | `mistral-medium-2508` |
-| `LLM_PROVIDER`    | `openai` or `mistral`. Determines which backend is used. | `openai`              |
+| Variable          | Description                                                       | Default               |
+| ----------------- | ----------------------------------------------------------------- | --------------------- |
+| `OPENAI_API_KEY`  | API key for OpenAI models.                                        | –                     |
+| `OPENAI_MODEL`    | Name of the OpenAI model.                                         | `gpt-4o`              |
+| `OLLAMA_MODEL`    | Name of the Ollama model.                                         | `gemma3:12b`          |
+| `MISTRAL_API_KEY` | API key for Mistral models.                                       | –                     |
+| `MISTRAL_MODEL`   | Name of the Mistral model.                                        | `mistral-medium-2508` |
+| `LLM_PROVIDER`    | `openai`, `ollama` or`mistral`. Determines which backend is used. | `openai`              |
 
 ### 3. Run the backend
 
