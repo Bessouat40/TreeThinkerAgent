@@ -4,6 +4,8 @@ Deep Research Agent is a lightweight orchestration layer that turns any LLM into
 
 This project is lightweight and doesn't use libraries such as LangChain, LlamaIndex, smolagents,...
 
+![Reasoning Tree Screenshot](media/ui.png)
+
 ## Key Features
 
 - **Autonomous planning loop** – The `AgentManager` asks the LLM to propose reasoning steps, executes the required tools, and records the results in a reasoning tree.

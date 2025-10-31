@@ -7,7 +7,6 @@ export async function runAgent() {
     ''
   );
   const query = (el.query?.value || '').trim();
-  const mode = document.getElementById('runMode')?.value;
 
   el.status.textContent = 'Running…';
   toast('Running agent…');
@@ -15,7 +14,7 @@ export async function runAgent() {
   const res = await fetch(`${base}/api/agent/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, mode }),
+    body: JSON.stringify({ query }),
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
