@@ -421,7 +421,7 @@ svg.edges {
   white-space: pre-wrap;
 }
 
-/* Inspector compact spacing (scopé) */
+/* Inspector compact spacing (scoped) */
 .inspector.compact {
   --pad-s: 6px;
   --pad-m: 8px;
@@ -577,7 +577,7 @@ svg.edges {
   line-height: 1.45;
 }
 
-/* Final content (markdown) — unique définition */
+/* Final content (markdown) — dedicated styling */
 #finalContent {
   padding: 12px;
   overflow-y: auto;
@@ -703,7 +703,7 @@ svg.edges {
   }
 }
 
-/* Option: masquer la poignée si tu la laisses dans le DOM */
+/* Optional: hide the drag handle if it remains in the DOM */
 .bottom-resizer {
   display: none !important;
 }
@@ -724,7 +724,7 @@ svg.edges {
 
 .inspector .section {
   margin: 6px 0 8px;
-} /* moins d’air */
+} /* tighter spacing */
 .inspector .section:first-child {
   margin-top: 0;
 }
@@ -740,7 +740,7 @@ svg.edges {
   line-height: var(--lh);
 }
 
-/* Markdown (marked) — neutraliser les grosses marges par défaut */
+/* Markdown (marked) — neutralise large default margins */
 .inspector .section-body.md p {
   margin: 0.3em 0;
 }
@@ -759,7 +759,7 @@ svg.edges {
   padding: 6px 8px;
 }
 
-/* Tools — réduire les espaces internes/entre cartes */
+/* Tools — reduce inner spacing between cards */
 .inspector .tools-grid {
   display: grid;
   gap: 6px;
@@ -775,7 +775,7 @@ svg.edges {
   padding: 6px 8px;
 }
 
-/* “Raw” bloc plus dense */
+/* Dense layout for the "Raw" block */
 .inspector .raw {
   padding: 6px 8px;
   margin: 0.35em 0;

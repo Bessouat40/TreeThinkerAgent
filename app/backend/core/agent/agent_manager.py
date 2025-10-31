@@ -1,6 +1,6 @@
 import json
-from typing import Any, Dict, List
-from pydantic import BaseModel, TypeAdapter
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field, TypeAdapter
 from app.backend.core.agent.llm import LLM
 from app.backend.core.models.tool_calls import ToolCall
 from app.backend.core.reasoningTree.reasoning_tree import ReasoningTree
@@ -12,7 +12,7 @@ def strip_json_markdown(response: str) -> str:
 
 class PlannedStep(BaseModel):
     description: str
-    tool_calls: List[Dict[str, Any]] = []
+    tool_calls: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class AgentManager:
@@ -21,12 +21,16 @@ class AgentManager:
         self.user_input = user_input
         self.reasoning_tree = ReasoningTree(user_input)
         self.llm = llm
+        self.final_answer: Optional[str] = None
 
-    def run(self):
+    def run(self) -> Dict[str, Any]:
         context = self.reasoning_tree.get_reasoning_tree_context()
         self.plan(context, parent_leaf_id="leaf_0")
-        self.finalize()
-        return self.reasoning_tree
+        final_answer = self.finalize()
+        return {
+            "reasoning_tree": self.reasoning_tree.to_dict(),
+            "final_answer": final_answer,
+        }
 
     def plan(self, context: str, parent_leaf_id: str, max_branch_len: int = 5):
         response = self.llm.generate(context)
@@ -45,27 +49,25 @@ class AgentManager:
                 call.result = self.llm.run_tool(call.tool_name, call.args)
 
             FILL_RESULT_PROMPT = """
-            Tu es un agent de raisonnement autonome.
+            You are an autonomous reasoning agent.
 
-            Les outils ont été exécutés avec succès. À partir du contexte précédent, de la nouvelle étape de raisonnement, et des résultats des outils, complète l'étape avec un résumé ou une conclusion cohérente.
+            The listed tools have already been executed successfully. Using the prior context, the current reasoning step description, and the tool results, produce a concise and coherent outcome for this step.
 
-            Réponds uniquement par un texte clair, concis et informatif — ce sera utilisé comme champ `result` dans l’arbre de raisonnement.
-
-            Ne mets pas de JSON, pas de balises, pas d’explication de ton raisonnement. Juste le texte final.
+            Respond with a short, informative paragraph only. Do not include JSON, code fences, or explanations of your process.
             """
             tool_results_text = "\n".join(f"{call.tool_name}: {call.result}" for call in tool_calls)
 
             user_input = f"""
-            CONTEXTE PRÉCÉDENT :
+            PREVIOUS CONTEXT:
             {context}
 
-            DESCRIPTION DE L'ÉTAPE :
+            STEP DESCRIPTION:
             {step.description}
 
-            RÉSULTATS DES OUTILS :
+            TOOL RESULTS:
             {tool_results_text}
 
-            Que peux-tu conclure ou ajouter à cette étape ?
+            What conclusion or synthesis should be recorded for this step?
             """
 
             result = self.llm.generate(user_input=user_input.strip(), system_prompt=FILL_RESULT_PROMPT.strip())
@@ -85,13 +87,12 @@ class AgentManager:
             self.plan(enriched_context, parent_leaf_id=new_leaf_id, max_branch_len=max_branch_len)
 
     def finalize(self) -> str:
-        """Génère une réponse finale basée sur toutes les feuilles terminales."""
+        """Generate the final answer based on every terminal leaf."""
         leaves = self.reasoning_tree.get_reasoning_tree_context()
 
         FINAL_PROMPT = f"""
-        Tu es un agent de deep research, répond à l'input utilisateur : {self.user_input}.
-        Pour cela, utilise le résultat du raisonnement : {leaves}.
-        Génère un rapport professionnel et structuré permettant à l'utilisateur d'avoir sa réponse.
+        You are a deep research agent responding to the user's original request: {self.user_input}.
+        Use the reasoning tree summary below to craft a professional, well-structured final report.
         """
 
         final_answer = self.llm.generate(
@@ -100,8 +101,10 @@ class AgentManager:
         )
 
         self.reasoning_tree.add_leaf(
-            description="Réponse finale",
+            description="Final answer",
             parent_leaf="leaf_0",
             tool_calls=[],
             result=final_answer
         )
+        self.final_answer = final_answer
+        return final_answer

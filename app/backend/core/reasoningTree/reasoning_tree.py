@@ -5,10 +5,10 @@ from app.backend.core.models.leaf import Leaf
 from app.backend.core.models.tool_calls import ToolCall
 
 class AddLeafArgs(BaseModel):
-    description: str = Field(..., description="Texte décrivant l'étape de raisonnement")
+    description: str = Field(..., description="Text describing the reasoning step")
     tool_calls: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="Liste des tools à appeler avec leurs arguments"
+        description="List of tools to execute alongside their arguments",
     )
 
 class ReasoningTree:
@@ -34,19 +34,10 @@ class ReasoningTree:
         )
     
     def to_dict(self) -> dict:
-        return {
-            leaf_id: {
-                "id": leaf.id,
-                "description": leaf.description,
-                "parent_leaf": leaf.parent_leaf,
-                "child_leaves": leaf.child_leaves,
-                "tool_calls": [tc.__dict__ for tc in leaf.tool_calls],
-            }
-            for leaf_id, leaf in self.leaves.items()
-        }
+        return {leaf_id: leaf.to_dict() for leaf_id, leaf in self.leaves.items()}
 
     def get_branch_depth(self, leaf_id: str) -> int:
-        """Profondeur = nombre de nœuds de root à leaf_id (root = profondeur 0)."""
+        """Return the depth (number of edges) between the root and the leaf."""
         depth = 0
         cur = self.leaves.get(leaf_id)
         while cur and cur.parent_leaf is not None:

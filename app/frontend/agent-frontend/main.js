@@ -36,7 +36,7 @@ function loadFinalPrefs() {
 const finalDrawer = document.getElementById('finalDrawer');
 const copyFinalBtn = document.getElementById('copyFinal');
 
-// nouveaux boutons
+// Additional controls on the final-answer drawer
 const btnHideFinal =
   document.getElementById('btnHideFinal') ||
   document.getElementById('toggleFinal'); // fallback
@@ -48,7 +48,7 @@ const btnMaxFinal = document.getElementById('btnMaxFinal');
 function applyFinalMode(mode) {
   if (!finalDrawer) return;
 
-  // Nettoyage des styles inline hérités (ancienne logique de drag)
+  // Clean up legacy inline styles from the previous drag implementation
   finalDrawer.style.removeProperty('height');
   finalDrawer.style.removeProperty('--final-h');
 
@@ -76,15 +76,15 @@ function getFinalMode() {
   return 'normal';
 }
 
-// restaurer préférence
+// Restore previously saved preferences
 {
   const prefs = loadFinalPrefs();
 
-  // 🔥 purge d'anciens styles inline
+  // Remove stale inline styles
   finalDrawer?.style.removeProperty('height');
   finalDrawer?.style.removeProperty('--final-h');
 
-  // Ne restaure plus heightPx (legacy), seulement le mode
+  // Only restore the saved mode (legacy height is ignored)
   applyFinalMode(prefs.mode || 'normal');
 }
 
@@ -105,7 +105,7 @@ btnMaxFinal?.addEventListener('click', () => {
   applyFinalMode(m === 'max' ? 'normal' : 'max');
 });
 
-// Copier contenu (markdown rendu -> texte)
+// Copy rendered markdown content as plain text
 copyFinalBtn?.addEventListener('click', async () => {
   const html = el.finalContent?.innerHTML ?? '';
   const tmp = document.createElement('div');
@@ -243,7 +243,7 @@ function fitToContent() {
 async function runAgent() {
   try {
     const data = await fetchRun();
-    const leaves = data.reasoning_tree?.leaves || data.leaves || {};
+    const leaves = data.reasoning_tree || {};
     if (!Object.keys(leaves).length) {
       el.status.textContent = 'No leaves returned.';
       toast('No leaves returned.');
@@ -255,7 +255,7 @@ async function runAgent() {
       nodes[leafId] = {
         id: leaf.id,
         name: (leaf.title || leaf.description || 'Untitled').slice(0, 60),
-        description: leaf.result || leaf.summary || '(aucun résultat)',
+        description: leaf.result || leaf.summary || '(no result)',
         depends_on: leaf.parent_leaf ? [leaf.parent_leaf] : [],
         status: leaf.status || 'done',
         tool_calls: leaf.tool_calls || [],
@@ -264,7 +264,7 @@ async function runAgent() {
       };
     }
     const finalAnswer = Object.values(leaves).find(
-      (l) => l.description === 'Réponse finale'
+      (l) => l.description === 'Final answer'
     )?.result;
 
     // historique

@@ -6,10 +6,10 @@ from app.backend.core.models.leaf import LlmLeaf
 from app.backend.core.models.tool_calls import ToolCall
 
 class AddLeafArgs(BaseModel):
-    description: str = Field(..., description="Texte décrivant l'étape de raisonnement")
+    description: str = Field(..., description="Text describing the reasoning step")
     tool_calls: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="Liste des tools à appeler avec leurs arguments"
+        description="List of tools to execute alongside their arguments",
     )
 
 @tool("add_leaf_to_reasoning_tree", AddLeafArgs, "Prepare a reasoning step (leaf) that can be added to the reasoning tree.")
