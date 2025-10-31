@@ -1,243 +1,187 @@
+<!-- index.html -->
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Agent DAG (native)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      :root {
-        --bg: #f8fafc;
-        --panel: #ffffff;
-        --border: #e5e7eb;
-        --text: #111827;
-        --muted: #6b7280;
-        --done: #dcfce7;
-        --running: #dbeafe;
-        --error: #fee2e2;
-        --pending: #f3f4f6;
-        --node-w: 240px;
-        --node-h: 72px;
-        --col-gap: 140px;
-        --row-gap: 26px;
-      }
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      }
-      .appbar {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid var(--border);
-        background: var(--panel);
-        position: sticky;
-        top: 0;
-        z-index: 2;
-      }
-      .appbar input,
-      .appbar button {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px 10px;
-        background: white;
-      }
-      .appbar button {
-        background: #111827;
-        color: white;
-        cursor: pointer;
-      }
-      .muted {
-        color: var(--muted);
-      }
-
-      .canvas {
-        position: relative;
-        height: calc(100% - 52px);
-        overflow: hidden;
-        background: repeating-linear-gradient(
-          0deg,
-          #f5f7fa,
-          #f5f7fa 24px,
-          #f0f3f7 24px,
-          #f0f3f7 25px
-        );
-      }
-      .viewport {
-        position: absolute;
-        inset: 0;
-        transform-origin: 0 0;
-      }
-
-      .node {
-        position: absolute;
-        width: var(--node-w);
-        min-height: var(--node-h);
-        background: var(--pending);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-        padding: 8px 10px;
-        user-select: none;
-      }
-      .node .title {
-        font-weight: 600;
-      }
-      .node .status {
-        color: var(--muted);
-        font-size: 12px;
-      }
-      .node.done {
-        background: var(--done);
-      }
-      .node.running {
-        background: var(--running);
-      }
-      .node.error {
-        background: var(--error);
-      }
-      .node.pending {
-        background: var(--pending);
-      }
-      .node .details {
-        margin-top: 6px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-          monospace;
-        font-size: 12px;
-        white-space: pre-wrap;
-        display: none;
-      }
-      .node.expanded .details {
-        display: block;
-      }
-
-      svg.edges {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-      }
-
-      /* Final answer: toujours visible en bas à droite */
-      .final-panel {
-        position: fixed;
-        right: 16px;
-        bottom: 16px;
-        width: min(520px, 90vw);
-        max-height: 60vh;
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-        display: flex;
-        flex-direction: column;
-        z-index: 10;
-      }
-      .final-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        font-weight: 600;
-      }
-      .final-content {
-        margin: 0;
-        padding: 12px;
-        white-space: pre-wrap;
-        overflow: auto;
-        max-height: 50vh;
-        font-size: 13px;
-        background: #f9fafb;
-        border-radius: 0 0 12px 12px;
-      }
-
-      /* Node details panel (shift+click) */
-      .node-panel {
-        position: fixed;
-        left: 16px;
-        bottom: 16px;
-        width: min(520px, 90vw);
-        max-height: 60vh;
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-        display: none;
-        flex-direction: column;
-        z-index: 10;
-      }
-      .node-panel.open {
-        display: flex;
-      }
-      .node-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border-bottom: 1px solid var(--border);
-        font-weight: 600;
-      }
-      .node-close {
-        border: 1px solid var(--border);
-        background: #f9fafb;
-        border-radius: 8px;
-        padding: 4px 8px;
-        cursor: pointer;
-      }
-      .node-content {
-        margin: 0;
-        padding: 12px;
-        white-space: pre-wrap;
-        overflow: auto;
-        max-height: 50vh;
-        font-size: 13px;
-        background: #f9fafb;
-        border-radius: 0 0 12px 12px;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Graph Studio — v2</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="appbar">
-      <input
-        id="apiBase"
-        style="min-width: 420px"
-        value="http://localhost:8000/api/agent/run"
-      />
-      <input
-        id="query"
-        style="flex: 1"
-        value="Plan a 7-day trip to Madrid using available tools. Return JSON only."
-      />
-      <button id="runBtn">Run</button>
-      <span id="status" class="muted"></span>
+    <div class="shell">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div class="title">Agent Graph Studio</div>
+        </div>
+
+        <div class="searchrow">
+          <input
+            id="query"
+            class="input"
+            placeholder="Ask anything… (⇧⏎ to run)"
+          />
+          <button id="runBtn" class="btn primary">Run</button>
+          <select id="runMode" class="select" title="Run mode">
+            <option value="default">Default</option>
+            <option value="fast">Fast</option>
+            <option value="trace">With Trace</option>
+          </select>
+        </div>
+
+        <div class="top-controls">
+          <button id="fitBtn" class="btn" title="Fit to content">Fit</button>
+          <button id="zoomInBtn" class="btn" title="Zoom in">＋</button>
+          <button id="zoomOutBtn" class="btn" title="Zoom out">－</button>
+        </div>
+
+        <div class="status" id="status">Ready.</div>
+      </header>
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="side-header">
+          <div class="tabs">
+            <button class="tab active" data-tab="history">Runs</button>
+            <button class="tab" data-tab="nodes">Nodes</button>
+            <button class="tab" data-tab="settings">Settings</button>
+          </div>
+          <button
+            id="openPalette"
+            class="btn"
+            title="Command palette (Ctrl/Cmd + K)"
+          >
+            ⌘K
+          </button>
+        </div>
+        <div class="side-content" id="tab-history">
+          <div class="list" id="runHistory"></div>
+        </div>
+        <div class="side-content" id="tab-nodes" style="display: none">
+          <div class="list" id="nodeList"></div>
+        </div>
+        <div class="side-content" id="tab-settings" style="display: none">
+          <div class="list">
+            <div class="list-item">
+              <div>
+                <div style="font-weight: 700">API Base</div>
+                <div class="meta">Change your backend URL</div>
+              </div>
+              <input
+                id="apiBase"
+                class="input"
+                value="http://localhost:8000"
+                style="width: 220px"
+              />
+            </div>
+            <div class="list-item">
+              <div>
+                <div style="font-weight: 700">Shortcuts</div>
+                <div class="meta">
+                  ⇧⏎ run • ⌘/Ctrl + K palette • ⌘/Ctrl + +/- zoom
+                </div>
+              </div>
+              <span class="kbd">?</span>
+            </div>
+          </div>
+        </div>
+        <div class="side-footer">
+          <button id="newRunBtn" class="btn">New Run</button>
+          <button id="clearBtn" class="btn">Clear</button>
+        </div>
+      </aside>
+
+      <!-- MAIN / CANVAS -->
+      <main class="main">
+        <div class="canvas-toolbar">
+          <button id="hudFit" class="icon-btn" title="Fit">⌗</button>
+          <button id="hudZoomIn" class="icon-btn" title="Zoom in">＋</button>
+          <button id="hudZoomOut" class="icon-btn" title="Zoom out">－</button>
+        </div>
+        <div class="minimap"><svg id="minimap" viewBox="0 0 100 60"></svg></div>
+        <div id="viewport" class="viewport">
+          <div class="layers">
+            <svg
+              id="edges"
+              class="edges"
+              xmlns="http://www.w3.org/2000/svg"
+            ></svg>
+            <div id="nodesLayer" class="nodes"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT DRAWER: NODE INSPECTOR -->
+        <aside id="nodePanel" class="drawer hidden" aria-hidden="true">
+          <div class="drawer-header">
+            <span id="nodePanelTitle">Node details</span>
+            <div style="display: flex; gap: 8px; align-items: center">
+              <span class="kbd">Esc</span>
+              <button id="closeNode" class="btn">Close</button>
+            </div>
+          </div>
+          <pre id="nodeContent" class="drawer-body"></pre>
+        </aside>
+
+        <!-- BOTTOM DRAWER: FINAL ANSWER -->
+        <section class="bottom" id="finalDrawer" aria-expanded="true">
+          <div class="bottom-header">
+            <span>Final Answer</span>
+            <div class="bottom-actions">
+              <button id="copyFinal" class="btn" title="Copy">Copy</button>
+              <button id="btnHideFinal" class="btn">Hide</button>
+              <button id="btnExpandFinal" class="btn">Expand</button>
+              <button id="btnMaxFinal" class="btn">Max</button>
+            </div>
+          </div>
+          <div id="finalContent" class="bottom-body">No answer yet.</div>
+        </section>
+      </main>
     </div>
 
-    <div class="canvas">
-      <div class="viewport" id="viewport">
-        <svg class="edges" id="edges"></svg>
-        <div id="nodesLayer"></div>
+    <!-- COMMAND PALETTE MODAL -->
+    <div id="palette" class="modal-overlay">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+      >
+        <div class="modal-header">
+          <input
+            id="paletteSearch"
+            class="input"
+            placeholder="Type a command…"
+          />
+          <span class="kbd">Esc</span>
+        </div>
+        <div class="modal-body" id="paletteList">
+          <div class="cmd" data-action="newRun">
+            <span>New run</span><span class="kbd">N</span>
+          </div>
+          <div class="cmd" data-action="fit">
+            <span>Fit to content</span><span class="kbd">F</span>
+          </div>
+          <div class="cmd" data-action="zoomIn">
+            <span>Zoom in</span><span class="kbd">+</span>
+          </div>
+          <div class="cmd" data-action="zoomOut">
+            <span>Zoom out</span><span class="kbd">-</span>
+          </div>
+          <div class="cmd" data-action="clear">
+            <span>Clear canvas</span><span class="kbd">⌫</span>
+          </div>
+          <div class="cmd" data-action="settings">
+            <span>Open settings</span><span class="kbd">,</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Final answer: toujours visible -->
-    <div class="final-panel" id="finalPanel">
-      <div class="final-header">Final answer</div>
-      <pre class="final-content" id="finalContent">No answer yet.</pre>
-    </div>
+    <!-- TOASTS -->
+    <div class="toast" id="toast"></div>
 
-    <!-- Node details (Shift+Click pour ouvrir) -->
-    <div class="node-panel" id="nodePanel">
-      <div class="node-header">
-        <div>Node details</div>
-        <button class="node-close" id="closeNode">✕</button>
-      </div>
-      <pre class="node-content" id="nodeContent">Select a node…</pre>
-    </div>
-
-    <script type="module" src="./agent.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

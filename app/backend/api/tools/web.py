@@ -1,9 +1,10 @@
+import json
 from pydantic import BaseModel, Field
-from typing import Optional
-from app.backend.core.tool import tool
 import requests
 from bs4 import BeautifulSoup
 import urllib.parse
+
+from app.backend.core.agent.tool import tool
 
 
 class WebSearchArgs(BaseModel):
@@ -24,50 +25,74 @@ def web_search(args: WebSearchArgs) -> dict:
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        links = soup.find_all('a', class_='result-link')
+
+        # DuckDuckGo Lite usually has <a class="result-link" href="/l/?uddg=..."> but structure can vary.
+        # Try multiple selectors to be more tolerant.
+        links = soup.select('a.result-link')
+        if not links:
+            links = soup.select('a')
 
         results = []
         for link in links:
-            title = link.get_text(strip=True)
-            raw_url = link.get('href')
-            clean_url = urllib.parse.parse_qs(
-                urllib.parse.urlparse(raw_url).query
-            ).get('uddg', [None])[0]
-            if not clean_url:
+            try:
+                title = link.get_text(strip=True)
+                raw_url = link.get('href') or ''
+
+                clean_url = None
+                # Case 1: redirect url with uddg param
+                try:
+                    qs = urllib.parse.parse_qs(urllib.parse.urlparse(raw_url).query)
+                    clean_url = qs.get('uddg', [None])[0]
+                except Exception:
+                    clean_url = None
+
+                # Case 2: raw_url is already absolute
+                if not clean_url:
+                    if raw_url.startswith('http://') or raw_url.startswith('https://'):
+                        clean_url = raw_url
+                    elif raw_url.startswith('/'):
+                        # relative url -> join with duckduckgo domain
+                        clean_url = urllib.parse.urljoin('https://lite.duckduckgo.com', raw_url)
+
+                if not clean_url:
+                    # skip entries we can't resolve
+                    continue
+
+                # Try to extract a nearby snippet/description if present
+                desc = ''
+                # common patterns in lite: snippet in a following <td class="result-snippet"> or nearby <div>
+                tr = link.find_parent('tr')
+                if tr:
+                    tr_next = tr.find_next_sibling('tr')
+                    if tr_next:
+                        td = tr_next.find('td', class_='result-snippet')
+                        if td:
+                            desc = td.get_text(strip=True)
+                if not desc:
+                    # fallback: look for a sibling span or div
+                    sib = link.find_next_sibling(['span', 'div'])
+                    if sib:
+                        desc = sib.get_text(strip=True)
+
+                results.append({
+                    'title': title,
+                    'url': clean_url,
+                    'snippet': desc,
+                })
+
+                if len(results) >= args.max_results:
+                    break
+            except Exception:
+                # be tolerant for individual link parsing failures
                 continue
 
-            desc = ""
-            tr = link.find_parent('tr')
-            if tr:
-                tr_next = tr.find_next_sibling('tr')
-                if tr_next:
-                    td = tr_next.find('td', class_='result-snippet')
-                    if td:
-                        desc = td.get_text(strip=True)
-
-            results.append({
-                "title": title,
-                "url": clean_url,
-                "snippet": desc
-            })
-
-            if len(results) >= args.max_results:
-                break
-
-        return {"results": results}
+        return {'results': results}
 
     except Exception as e:
         return {"error": str(e)}
 
-import requests
-from bs4 import BeautifulSoup
-from pydantic import BaseModel, Field
-
-from app.backend.core.tool import tool
-
-
 class FetchURLArgs(BaseModel):
-    url: str = Field(..., description="URL d'une page web à lire")
+    url: str = Field(..., description="URL of the webpage to read")
 
 @tool("fetch_url", FetchURLArgs, "Fetch and clean the content of a public webpage.")
 def fetch_url(args: FetchURLArgs) -> dict:
@@ -76,6 +101,6 @@ def fetch_url(args: FetchURLArgs) -> dict:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         text = soup.get_text(separator="\n", strip=True)
-        return {"text": text[:10_000]}
+        return json.loads(json.dumps({"text": text[:10_000]}))
     except Exception as e:
         return {"error": str(e)}
