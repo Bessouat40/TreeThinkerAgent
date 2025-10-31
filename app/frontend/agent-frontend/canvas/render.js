@@ -130,7 +130,6 @@ export function render(state) {
         ? state.final
         : state.final.answer ?? pretty(state.final);
 
-    // ✅ rendu markdown
     const html = window.marked ? window.marked.parse(raw) : raw;
     el.finalContent.innerHTML = html;
 

@@ -1,6 +1,3 @@
-/* --------------------------------------------------
-   DESIGN SYSTEM
--------------------------------------------------- */
 :root {
   /* Palette */
   --bg: #0a0f1e;
@@ -13,8 +10,8 @@
   --muted: #8fa5c9;
   --muted-2: #6c82ab;
 
-  --accent: #60a5fa; /* sky-400 */
-  --accent-2: #3b82f6; /* blue-500 */
+  --accent: #60a5fa;
+  --accent-2: #3b82f6;
   --good: #22c55e;
   --warn: #f59e0b;
   --bad: #ef4444;
@@ -63,9 +60,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* --------------------------------------------------
-   APP SHELL
--------------------------------------------------- */
 .shell {
   display: grid;
   grid-template-rows: var(--toolbar-h) 1fr;
@@ -311,7 +305,7 @@ svg.edges {
   display: block;
 }
 
-/* NODES (compact: titre seul) */
+/* NODES */
 .node {
   position: absolute;
   width: var(--node-w);
@@ -350,7 +344,6 @@ svg.edges {
   color: #a3b6d8;
 }
 
-/* cacher desc/tools dans la carte compacte */
 .node .desc,
 .node .tools {
   display: none !important;
@@ -523,7 +516,7 @@ svg.edges {
   overflow: auto;
 }
 
-/* BOTTOM DRAWER — FINAL ANSWER (unique source de hauteur) */
+/* BOTTOM DRAWER — FINAL ANSWER */
 .bottom {
   position: absolute;
   left: 12px;
@@ -740,7 +733,7 @@ svg.edges {
   line-height: var(--lh);
 }
 
-/* Markdown (marked) — neutralise large default margins */
+/* Markdown (marked) */
 .inspector .section-body.md p {
   margin: 0.3em 0;
 }

@@ -1,7 +1,4 @@
-// ui/inspector.js
 import { el } from './dom.js';
-
-// ---- Compact markdown helpers ---------------------------------------------
 
 function toDisplayString(v) {
   if (v == null) return '(no result)';
@@ -14,15 +11,13 @@ function toDisplayString(v) {
   }
 }
 
-// Normalize input a bit to avoid empty paragraphs from stray newlines
 function normalizeMDInput(s) {
   return String(s)
     .replace(/\r\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n') // collapse multiple blank lines
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
-// If marked returns a single <p>…</p>, unwrap it to kill default p margins
 function unwrapSingleParagraph(html) {
   const m = /^<p>([\s\S]*?)<\/p>\s*$/.exec(html);
   return m ? m[1] : html;
@@ -38,10 +33,9 @@ function mdCompact(src) {
 
   try {
     if (window.marked) {
-      // compact-ish settings (no extra <p> gaps, autolinks, GFM)
       window.marked.setOptions?.({
         gfm: true,
-        breaks: false, // keep line breaks strict; paragraphs only on blank line
+        breaks: false,
         smartLists: true,
         smartypants: false,
       });
@@ -61,16 +55,12 @@ function escapeHTML(s) {
     .replace(/>/g, '&gt;');
 }
 
-// ---- Inspector -------------------------------------------------------------
-
 export function openInspectorRich(node) {
   if (!el.nodePanel || !el.nodeContent) return;
 
-  // Title
   document.getElementById('nodePanelTitle').textContent =
     node.name || 'Node details';
 
-  // Meta (compact)
   const depList = (node.depends_on || [])
     .map((d) => `<code>${d}</code>`)
     .join(' ');
@@ -88,10 +78,8 @@ export function openInspectorRich(node) {
     </div>
   `;
 
-  // Description (compact markdown)
   const descHTML = mdCompact(node.description || '');
 
-  // Tools (compact)
   const toolsHTML = (node.tool_calls || [])
     .map((t) => {
       const head = `🧩 ${t.tool_name || 'tool'}`;
@@ -104,7 +92,6 @@ export function openInspectorRich(node) {
     })
     .join('');
 
-  // Render
   el.nodeContent.innerHTML = `
     <div class="inspector compact">
       ${meta}
@@ -141,7 +128,6 @@ export function openInspectorRich(node) {
   el.nodePanel.setAttribute('aria-hidden', 'false');
 }
 
-// already present
 export function bindInspector() {
   document
     .getElementById('closeNode')

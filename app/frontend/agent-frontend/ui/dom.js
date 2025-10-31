@@ -1,4 +1,3 @@
-// centralise toutes les refs DOM
 export const el = {
   viewport: document.getElementById('viewport'),
   nodesLayer: document.getElementById('nodesLayer'),

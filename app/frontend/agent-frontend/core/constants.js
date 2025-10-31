@@ -1,4 +1,3 @@
-// lit les CSS custom props une seule fois
 const cssVar = (name, fallback) =>
   parseInt(getComputedStyle(document.documentElement).getPropertyValue(name)) ||
   fallback;

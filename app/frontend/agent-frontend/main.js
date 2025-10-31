@@ -1,4 +1,3 @@
-// main.js
 import { el } from './ui/dom.js';
 import { initTabs } from './ui/tabs.js';
 import { toast } from './ui/toast.js';
@@ -17,7 +16,6 @@ import { drawMinimapFrame } from './canvas/minimap.js';
 import { render } from './canvas/render.js';
 import { runAgent as fetchRun } from './data/backend.js';
 
-/* ---------------- Final drawer prefs ---------------- */
 const FINAL_PREF_KEY = 'ags:finalDrawer';
 function saveFinalPrefs(p) {
   try {
@@ -32,23 +30,18 @@ function loadFinalPrefs() {
   }
 }
 
-/* ---------------- Final drawer DOM ---------------- */
 const finalDrawer = document.getElementById('finalDrawer');
 const copyFinalBtn = document.getElementById('copyFinal');
 
-// Additional controls on the final-answer drawer
 const btnHideFinal =
   document.getElementById('btnHideFinal') ||
-  document.getElementById('toggleFinal'); // fallback
+  document.getElementById('toggleFinal');
 const btnExpandFinal = document.getElementById('btnExpandFinal');
 const btnMaxFinal = document.getElementById('btnMaxFinal');
 
-/* ---------------- Final drawer states ---------------- */
-// modes: 'normal' | 'collapsed' | 'expanded' | 'max'
 function applyFinalMode(mode) {
   if (!finalDrawer) return;
 
-  // Clean up legacy inline styles from the previous drag implementation
   finalDrawer.style.removeProperty('height');
   finalDrawer.style.removeProperty('--final-h');
 
@@ -76,36 +69,30 @@ function getFinalMode() {
   return 'normal';
 }
 
-// Restore previously saved preferences
 {
   const prefs = loadFinalPrefs();
 
-  // Remove stale inline styles
   finalDrawer?.style.removeProperty('height');
   finalDrawer?.style.removeProperty('--final-h');
 
-  // Only restore the saved mode (legacy height is ignored)
   applyFinalMode(prefs.mode || 'normal');
 }
 
-/* ---------------- Final drawer actions ---------------- */
-// Hide / Show
 btnHideFinal?.addEventListener('click', () => {
   const m = getFinalMode();
   applyFinalMode(m === 'collapsed' ? 'normal' : 'collapsed');
 });
-// Expand 60%
+
 btnExpandFinal?.addEventListener('click', () => {
   const m = getFinalMode();
   applyFinalMode(m === 'expanded' ? 'normal' : 'expanded');
 });
-// Max
+
 btnMaxFinal?.addEventListener('click', () => {
   const m = getFinalMode();
   applyFinalMode(m === 'max' ? 'normal' : 'max');
 });
 
-// Copy rendered markdown content as plain text
 copyFinalBtn?.addEventListener('click', async () => {
   const html = el.finalContent?.innerHTML ?? '';
   const tmp = document.createElement('div');
@@ -119,14 +106,12 @@ copyFinalBtn?.addEventListener('click', async () => {
   }
 });
 
-/* ---------------- App bootstrap ---------------- */
 initTabs();
 bindInspector();
 bindPalette(runAction);
 bindPanZoom();
 setOnTransform(drawMinimapFrame);
 
-/* ---------------- Buttons ---------------- */
 el.fitBtn?.addEventListener('click', fitToContent);
 el.zoomInBtn?.addEventListener('click', zoomIn);
 el.zoomOutBtn?.addEventListener('click', zoomOut);
@@ -142,7 +127,6 @@ el.query?.addEventListener('keydown', (e) => {
   }
 });
 
-/* ---------------- Keyboard ---------------- */
 window.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === '+') {
     e.preventDefault();
@@ -169,13 +153,11 @@ window.addEventListener('keydown', (e) => {
     openPalette();
   }
 
-  // ⌘/Ctrl + J -> Hide/Show
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j' && !e.shiftKey) {
     e.preventDefault();
     const m = getFinalMode();
     applyFinalMode(m === 'collapsed' ? 'normal' : 'collapsed');
   }
-  // ⌘/Ctrl + ⇧ + J -> cycle normal → expanded → max → normal
   if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'j') {
     e.preventDefault();
     const order = ['normal', 'expanded', 'max'];
@@ -185,7 +167,6 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-/* ---------------- Palette actions ---------------- */
 function runAction(a) {
   const map = {
     newRun: () => {
@@ -224,7 +205,6 @@ document.getElementById('newRunBtn')?.addEventListener('click', () => {
   toast('New run');
 });
 
-/* ---------------- Fit to content ---------------- */
 function fitToContent() {
   const box = el.edgesSvg.getBBox
     ? el.edgesSvg.getBBox()
@@ -239,7 +219,6 @@ function fitToContent() {
   drawMinimapFrame();
 }
 
-/* ---------------- Run agent ---------------- */
 async function runAgent() {
   try {
     const data = await fetchRun();
@@ -289,5 +268,4 @@ async function runAgent() {
   }
 }
 
-// debug
 window.AgentGraphUI = { render, runAgent, fitToContent, updateTransform };
