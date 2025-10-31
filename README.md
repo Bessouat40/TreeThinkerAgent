@@ -1,6 +1,6 @@
 # TreeThinkerAgent
 
-TreeThinkerAgent is a lightweight orchestration layer that turns any LLM into an autonomous multi-step reasoning agent. It supports multi-step planning, tool execution, and final synthesis — while exposing the entire reasoning process as a tree you can explore.
+TreeThinkerAgent is a lightweight orchestration layer that turns any LLM into an autonomous multi-step reasoning agent. It supports multi-step planning, tool execution, and final synthesis while exposing the entire reasoning process as a tree you can explore.
 
 This project is lightweight and doesn't use libraries such as LangChain, LlamaIndex, smolagents,...
 
