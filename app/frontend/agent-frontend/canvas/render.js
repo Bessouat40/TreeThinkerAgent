@@ -93,7 +93,7 @@ export function render(state) {
     )}</div>
         <span class="badge" title="children·tools">${badge}</span>
       </div>
-      <div class="desc">${escHTML(n.description || '(aucun résultat)')}</div>
+      <div class="desc">${escHTML(n.description || '(no result)')}</div>
       ${toolsHTML ? `<div class="tools">${toolsHTML}</div>` : ''}
     `;
 

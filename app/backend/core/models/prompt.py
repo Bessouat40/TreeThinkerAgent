@@ -29,7 +29,7 @@ Avoid overthinking trivial requests, but always aim for explainability, transpar
     "properties": {
       "description": {
         "type": "string",
-        "description": "Thought and description about this step of your reasonment."
+        "description": "Thought process and description for this reasoning step."
       },
       "tool_calls": {
         "type": "array",
@@ -40,7 +40,7 @@ Avoid overthinking trivial requests, but always aim for explainability, transpar
             "result": {
               "type": "string",
               "minLength": 1,
-              "description": "wait for the result of this, keep it empty"
+              "description": "Leave blank. The runtime will fill this once the tool completes."
             },
             "tool_name": {
               "type": "string",

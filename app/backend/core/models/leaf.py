@@ -1,18 +1,17 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from app.backend.core.models.tool_calls import ToolCall, ToolResult
+from app.backend.core.models.tool_calls import ToolCall
 
 @dataclass
 class LlmLeaf:
     description: str
-    tool_results: List[ToolResult]
     tool_calls: List[ToolCall] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "description": self.description,
-            "tool_calls": [tc.to_dict() for tc in self.tool_calls]
+            "tool_calls": [tc.to_dict() for tc in self.tool_calls],
         }
 
 @dataclass
@@ -20,7 +19,7 @@ class Leaf:
     id: str
     description: str
     result: str
-    parent_leaf: str
+    parent_leaf: Optional[str]
     child_leaves: List[str]
     tool_calls: List[ToolCall] = field(default_factory=list)
 
@@ -31,5 +30,18 @@ class Leaf:
         if self.child_leaves:
             parts.append(f"children={self.child_leaves}")
         if self.tool_calls:
-            parts.append(str(self.tool_calls))
+            formatted_calls = "; ".join(
+                f"{tc.tool_name}(args={tc.args}, result={tc.result})" for tc in self.tool_calls
+            )
+            parts.append(f"tools=[{formatted_calls}]")
         return " | ".join(parts)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "description": self.description,
+            "result": self.result,
+            "parent_leaf": self.parent_leaf,
+            "child_leaves": self.child_leaves,
+            "tool_calls": [tc.to_dict() for tc in self.tool_calls],
+        }

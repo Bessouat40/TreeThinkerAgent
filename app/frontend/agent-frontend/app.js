@@ -511,7 +511,7 @@ async function runAgent() {
       nodes[leafId] = {
         id: leaf.id,
         name: (leaf.title || leaf.description || 'Untitled').slice(0, 60),
-        description: leaf.result || leaf.summary || '(aucun résultat)',
+        description: leaf.result || leaf.summary || '(no result)',
         depends_on: leaf.parent_leaf ? [leaf.parent_leaf] : [],
         status: leaf.status || 'done',
         tool_calls: leaf.tool_calls || [],
@@ -520,7 +520,7 @@ async function runAgent() {
       };
     }
     const finalAnswer = Object.values(leaves).find(
-      (l) => l.description === 'Réponse finale'
+      (l) => l.description === 'Final answer'
     )?.result;
     const card = document.createElement('div');
     card.className = 'list-item';

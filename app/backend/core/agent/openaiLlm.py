@@ -17,9 +17,11 @@ class OpenAILLM(LLM):
         """
         Initialize the OpenAI API client using the API key from the environment.
         """
-        client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
-        )
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is not set in the environment.")
+
+        client = OpenAI(api_key=api_key)
         return client
 
     def has_native_tool_calling(self) -> bool:

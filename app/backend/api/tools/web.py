@@ -92,7 +92,7 @@ def web_search(args: WebSearchArgs) -> dict:
         return {"error": str(e)}
 
 class FetchURLArgs(BaseModel):
-    url: str = Field(..., description="URL d'une page web à lire")
+    url: str = Field(..., description="URL of the webpage to read")
 
 @tool("fetch_url", FetchURLArgs, "Fetch and clean the content of a public webpage.")
 def fetch_url(args: FetchURLArgs) -> dict:
