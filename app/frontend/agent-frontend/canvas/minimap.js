@@ -1,7 +1,52 @@
 import { el } from '../ui/dom.js';
-import { getView } from './panzoom.js';
+import { getView, getViewportSize, setOrigin } from './panzoom.js';
 
 let lastData = { nodes: [], size: { width: 1000, height: 600 } };
+let isDragging = false;
+
+function focusFromMinimapEvent(e) {
+  const svg = el.minimapSvg;
+  if (!svg) return;
+  const { nodes, size } = lastData;
+  if (!nodes.length) return;
+
+  const rect = svg.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return;
+  const nx = (e.clientX - rect.left) / rect.width;
+  const ny = (e.clientY - rect.top) / rect.height;
+  if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+
+  const clampedX = Math.min(1, Math.max(0, nx));
+  const clampedY = Math.min(1, Math.max(0, ny));
+
+  const worldX = clampedX * size.width;
+  const worldY = clampedY * size.height;
+  const { scale } = getView();
+  const { width: viewW, height: viewH } = getViewportSize();
+
+  const originX = viewW / 2 - scale * worldX;
+  const originY = viewH / 2 - scale * worldY;
+  setOrigin(originX, originY);
+}
+
+const svg = el.minimapSvg;
+if (svg) {
+  svg.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    svg.setPointerCapture?.(e.pointerId);
+    focusFromMinimapEvent(e);
+  });
+  svg.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    focusFromMinimapEvent(e);
+  });
+  const stop = () => {
+    isDragging = false;
+  };
+  svg.addEventListener('pointerup', stop);
+  svg.addEventListener('pointerleave', stop);
+  svg.addEventListener('pointercancel', stop);
+}
 
 export function drawMinimap(
   positions = [],
@@ -50,8 +95,9 @@ export function drawMinimapFrame() {
   const scaleY = 60 / Math.max(height, 1);
 
   const inv = 1 / scale;
-  const vw = window.innerWidth * inv;
-  const vh = (window.innerHeight - 160) * inv;
+  const { width: viewW, height: viewH } = getViewportSize();
+  const vw = viewW * inv;
+  const vh = viewH * inv;
   const vx = -origin.x * inv,
     vy = -origin.y * inv;
 
@@ -66,4 +112,8 @@ export function drawMinimapFrame() {
   rect.setAttribute('stroke-width', '1');
   rect.setAttribute('opacity', '0.9');
   svg.appendChild(rect);
+}
+
+export function getMinimapState() {
+  return lastData;
 }

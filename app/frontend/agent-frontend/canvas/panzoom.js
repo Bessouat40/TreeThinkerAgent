@@ -6,6 +6,36 @@ let scale = 1,
   panStart = { x: 0, y: 0 };
 let onTransform = () => {}; // callback (minimap, density…)
 
+function clampSize(value) {
+  return Math.max(1, Math.floor(value));
+}
+
+export function getViewportSize() {
+  const root = el.viewport?.parentElement;
+  if (!root) return { width: clampSize(window.innerWidth), height: clampSize(window.innerHeight) };
+
+  const rootRect = root.getBoundingClientRect();
+  let width = rootRect.width;
+  let height = rootRect.height;
+
+  if (el.nodePanel && !el.nodePanel.classList.contains('hidden')) {
+    const panelRect = el.nodePanel.getBoundingClientRect();
+    const overlapX = Math.max(0, rootRect.right - panelRect.left);
+    width -= overlapX;
+  }
+
+  if (el.finalDrawer) {
+    const drawerRect = el.finalDrawer.getBoundingClientRect();
+    const overlapY = Math.max(0, rootRect.bottom - drawerRect.top);
+    height -= overlapY;
+  }
+
+  return {
+    width: clampSize(width),
+    height: clampSize(height),
+  };
+}
+
 export function getView() {
   return { scale, origin };
 }
