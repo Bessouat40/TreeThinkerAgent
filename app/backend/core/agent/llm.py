@@ -24,8 +24,17 @@ class LLM(ABC):
       and generating responses
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, provider_url: Optional[str] = None, api_key: Optional[str] = None):
+        """Base LLM initializer.
+
+        Args:
+            model_name: name of the model to use for this provider.
+            provider_url: optional URL for provider endpoints (frontend override).
+            api_key: optional API key provided by the frontend.
+        """
         self.model_name = model_name
+        self.provider_url = provider_url
+        self.api_key = api_key
         self.client = self.init_client()
         self._tools: Dict[str, ToolSpec] = {}
         self._tool_runners: Dict[str, Any] = {}

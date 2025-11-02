@@ -10,18 +10,23 @@ from app.backend.core.models.prompt import SYSTEM_PROMPT
 
 
 class OpenAILLM(LLM):
-    def __init__(self, model_name: str):
-        super().__init__(model_name)
+    def __init__(self, model_name: str, provider_url: Optional[str] = None, api_key: Optional[str] = None):
+        super().__init__(model_name, provider_url=provider_url, api_key=api_key)
 
     def init_client(self):
         """
-        Initialize the OpenAI API client using the API key from the environment.
+        Initialize the OpenAI API client using the provided API key (if any),
+        otherwise fall back to the environment variable. If provider_url is set,
+        use it as the base URL for the client.
         """
-        api_key = os.environ.get("OPENAI_API_KEY")
+        api_key = self.api_key or os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is not set in the environment.")
+            raise RuntimeError("OPENAI_API_KEY is not set in the environment or provided in the request.")
 
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(
+            api_key=api_key,
+            base_url=self.provider_url if self.provider_url else "https://api.openai.com/v1"
+        )
         return client
 
     def has_native_tool_calling(self) -> bool:

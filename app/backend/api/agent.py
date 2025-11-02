@@ -3,6 +3,7 @@ import os
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 from app.backend.api.tools.web import fetch_url, web_search
 from app.backend.core.agent.agent_manager import AgentManager
@@ -29,28 +30,52 @@ def add_a_b(args: AddArgs) -> dict:
 
 class AgentRequest(BaseModel):
     query: str
+    llmProvider: Optional[str] = None
+    providerUrl: Optional[str] = None
+    modelName: Optional[str] = None
+    apiKey: Optional[str] = None
 
 
-def _build_llm() -> LLM:
-    """Build the LLM backend based on environment configuration."""
-    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+def _build_llm(
+    provider_override: Optional[str] = None,
+    provider_url: Optional[str] = None,
+    model_name_override: Optional[str] = None,
+    api_key_override: Optional[str] = None,
+) -> LLM:
+    """Build the LLM backend based on environment configuration or provided overrides.
+
+    Args:
+        provider_override: optional provider name (e.g. 'openai', 'mistral', 'ollama')
+        provider_url: optional provider URL (kept on the instance for callers to use)
+        model_name_override: optional model name to use for the provider
+    """
+    provider = (provider_override or os.getenv("LLM_PROVIDER", "openai")).lower()
+
     if provider == "mistral":
-        model_name = os.getenv("MISTRAL_MODEL", "mistral-medium-2508")
-        return MistralLLM(model_name=model_name)
-    
-    elif provider == "ollama":
-        model_name = os.getenv("OLLAMA_MODEL", "gemma3:12b")
-        return OllamaLLM(model_name=model_name)
+        model_name = model_name_override or os.getenv("MISTRAL_MODEL", "mistral-medium-2508")
+        inst = MistralLLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
+        return inst
 
-    model_name = os.getenv("OPENAI_MODEL", "gpt-4o")
-    return OpenAILLM(model_name=model_name)
+    elif provider == "ollama":
+        model_name = model_name_override or os.getenv("OLLAMA_MODEL", "gemma3:12b")
+        inst = OllamaLLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
+        return inst
+
+    model_name = model_name_override or os.getenv("OPENAI_MODEL", "gpt-4o")
+    inst = OpenAILLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
+    return inst
 
 
 @router.post("/run")
 async def run_agent(req: AgentRequest):
     """Run the autonomous research agent for the provided query."""
     try:
-        llm = _build_llm()
+        llm = _build_llm(
+            provider_override=(req.llmProvider or None),
+            provider_url=(req.providerUrl or None),
+            model_name_override=(req.modelName or None),
+            api_key_override=(req.apiKey or None),
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to initialize language model: {exc}") from exc
 

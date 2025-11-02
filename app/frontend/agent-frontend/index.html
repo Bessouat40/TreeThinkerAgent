@@ -37,9 +37,8 @@
       <aside class="sidebar">
         <div class="side-header">
           <div class="tabs">
-            <button class="tab active" data-tab="history">Runs</button>
+            <button class="tab active" data-tab="settings">Settings</button>
             <button class="tab" data-tab="nodes">Nodes</button>
-            <button class="tab" data-tab="settings">Settings</button>
           </div>
           <button
             id="openPalette"
@@ -49,39 +48,57 @@
             ⌘K
           </button>
         </div>
-        <div class="side-content" id="tab-history">
-          <div class="list" id="runHistory"></div>
-        </div>
         <div class="side-content" id="tab-nodes" style="display: none">
           <div class="list" id="nodeList"></div>
         </div>
-        <div class="side-content" id="tab-settings" style="display: none">
+        <div class="side-content" id="tab-settings" style="display: block">
           <div class="list">
-            <div class="list-item">
-              <div>
-                <div style="font-weight: 700">API Base</div>
-                <div class="meta">Change your backend URL</div>
-              </div>
+            <div class="list-item" style="flex-direction: column; gap: 8px">
+              <div style="font-weight: 700">LLM Provider</div>
+              <div class="meta">Choose your LLM service provider</div>
+              <select id="llmProvider" class="input" style="width: 100%">
+                <option value="ollama">Ollama</option>
+                <option value="openai">OpenAI</option>
+                <option value="mistral">Mistral AI</option>
+              </select>
+            </div>
+            <div class="list-item" style="flex-direction: column; gap: 8px">
+              <div style="font-weight: 700">Model Name</div>
+              <div class="meta">Name of the model to use</div>
               <input
-                id="apiBase"
+                id="modelName"
                 class="input"
-                value="http://localhost:8000"
-                style="width: 220px"
+                value="llama3.2:latest"
+                style="width: 100%"
               />
             </div>
-            <div class="list-item">
-              <div>
-                <div style="font-weight: 700">Shortcuts</div>
-                <div class="meta">
-                  ⇧⏎ run • ⌘/Ctrl + K palette • ⌘/Ctrl + +/- zoom
-                </div>
+            <div class="list-item" style="flex-direction: column; gap: 8px">
+              <div style="font-weight: 700">Provider URL</div>
+              <div class="meta">API endpoint for your chosen provider</div>
+              <input
+                id="providerUrl"
+                class="input"
+                value="http://127.0.0.1:11434"
+                style="width: 100%"
+              />
+            </div>
+            <div class="list-item" style="flex-direction: column; gap: 8px">
+              <div style="font-weight: 700">API Key</div>
+              <div class="meta">
+                Authentication key for the provider (if required)
               </div>
-              <span class="kbd">?</span>
+              <input
+                id="apiKey"
+                class="input"
+                type="password"
+                placeholder="Enter your API key"
+                value=""
+                style="width: 100%"
+              />
             </div>
           </div>
         </div>
         <div class="side-footer">
-          <button id="newRunBtn" class="btn">New Run</button>
           <button id="clearBtn" class="btn">Clear</button>
         </div>
       </aside>
