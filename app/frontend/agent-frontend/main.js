@@ -15,6 +15,7 @@ import {
 import { drawMinimapFrame } from './canvas/minimap.js';
 import { render } from './canvas/render.js';
 import { runAgent as fetchRun } from './data/backend.js';
+import { initProviderDefaults } from './ui/defaults.js';
 
 const FINAL_PREF_KEY = 'ags:finalDrawer';
 function saveFinalPrefs(p) {
@@ -112,6 +113,8 @@ bindPalette(runAction);
 bindPanZoom();
 setOnTransform(drawMinimapFrame);
 
+initProviderDefaults(el);
+
 el.fitBtn?.addEventListener('click', fitToContent);
 el.zoomInBtn?.addEventListener('click', zoomIn);
 el.zoomOutBtn?.addEventListener('click', zoomOut);
@@ -169,10 +172,6 @@ window.addEventListener('keydown', (e) => {
 
 function runAction(a) {
   const map = {
-    newRun: () => {
-      el.query.value = '';
-      el.query.focus();
-    },
     fit: fitToContent,
     zoomIn,
     zoomOut,
@@ -184,7 +183,6 @@ function runAction(a) {
       document.querySelectorAll('.tab').forEach((t) => {
         if (t.dataset.tab === 'settings') t.classList.add('active');
       });
-      document.getElementById('tab-history').style.display = 'none';
       document.getElementById('tab-nodes').style.display = 'none';
       document.getElementById('tab-settings').style.display = 'block';
     },
@@ -199,11 +197,6 @@ function clearCanvas() {
   toast('Canvas cleared');
 }
 document.getElementById('clearBtn')?.addEventListener('click', clearCanvas);
-document.getElementById('newRunBtn')?.addEventListener('click', () => {
-  el.query.value = '';
-  el.query.focus();
-  toast('New run');
-});
 
 function fitToContent() {
   const box = el.edgesSvg.getBBox
@@ -245,14 +238,6 @@ async function runAgent() {
     const finalAnswer = Object.values(leaves).find(
       (l) => l.description === 'Final answer'
     )?.result;
-
-    // historique
-    const card = document.createElement('div');
-    card.className = 'list-item';
-    card.innerHTML = `<span>${
-      el.query.value || 'Untitled run'
-    }</span><span class="meta">${new Date().toLocaleTimeString()}</span>`;
-    el.runHistory.prepend(card);
 
     render({
       nodes,
