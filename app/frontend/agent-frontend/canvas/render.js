@@ -124,6 +124,13 @@ export function render(state) {
   }
 
   // final
+  const nodeCount = Object.keys(view.nodes || {}).length;
+  const edgeCount = Object.values(view.nodes || {}).reduce(
+    (acc, node) => acc + (Array.isArray(node.depends_on) ? node.depends_on.length : 0),
+    0
+  );
+  const summaryText = `Showing ${nodeCount} nodes and ${edgeCount} connections.`;
+
   if (state.final) {
     const raw =
       typeof state.final === 'string'
@@ -133,10 +140,10 @@ export function render(state) {
     const html = window.marked ? window.marked.parse(raw) : raw;
     el.finalContent.innerHTML = html;
 
-    el.status.textContent = 'Done.';
+    el.status.textContent = `${summaryText} Final answer ready.`;
   } else {
     el.finalContent.textContent = 'No answer yet.';
-    el.status.textContent = 'Ready.';
+    el.status.textContent = `${summaryText} Awaiting final answer.`;
   }
 
   drawMinimap(Object.values(positions), { width, height });

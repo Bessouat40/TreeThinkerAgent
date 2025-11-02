@@ -28,6 +28,26 @@
           <button id="fitBtn" class="btn" title="Fit to content">Fit</button>
           <button id="zoomInBtn" class="btn" title="Zoom in">＋</button>
           <button id="zoomOutBtn" class="btn" title="Zoom out">－</button>
+          <button
+            id="exportTreeBtn"
+            class="btn"
+            title="Download the current reasoning tree as JSON"
+          >
+            Export
+          </button>
+          <button
+            id="importTreeBtn"
+            class="btn"
+            title="Upload a previously saved reasoning tree"
+          >
+            Import
+          </button>
+          <input
+            type="file"
+            id="importTreeInput"
+            accept="application/json"
+            hidden
+          />
         </div>
 
         <div class="status" id="status">Ready.</div>

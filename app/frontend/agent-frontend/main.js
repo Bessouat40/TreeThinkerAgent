@@ -44,6 +44,9 @@ const btnHideFinal =
 const btnExpandFinal = document.getElementById('btnExpandFinal');
 const btnMaxFinal = document.getElementById('btnMaxFinal');
 
+const TREE_EXPORT_VERSION = 1;
+let lastTreePayload = null;
+
 function applyFinalMode(mode) {
   if (!finalDrawer) return;
 
@@ -134,6 +137,12 @@ el.query?.addEventListener('keydown', (e) => {
   }
 });
 
+el.exportTreeBtn?.addEventListener('click', exportCurrentTree);
+el.importTreeBtn?.addEventListener('click', () =>
+  el.importTreeInput?.click()
+);
+el.importTreeInput?.addEventListener('change', handleImportTreeFile);
+
 window.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === '+') {
     e.preventDefault();
@@ -174,6 +183,223 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+function deriveFinalAnswer(leaves, fallback) {
+  if (fallback) return fallback;
+  for (const leaf of Object.values(leaves || {})) {
+    if (
+      leaf &&
+      typeof leaf.description === 'string' &&
+      leaf.description.toLowerCase() === 'final answer'
+    ) {
+      if (typeof leaf.result === 'string') return leaf.result;
+      if (leaf.result != null) {
+        try {
+          return JSON.stringify(leaf.result);
+        } catch {
+          return String(leaf.result);
+        }
+      }
+      if (typeof leaf.summary === 'string') return leaf.summary;
+    }
+  }
+  return null;
+}
+
+function normalizeTreePayload(raw, queryOverride) {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Invalid payload: expected an object');
+  }
+
+  const tree = raw.reasoning_tree;
+  if (!tree || typeof tree !== 'object' || Array.isArray(tree)) {
+    throw new Error('Payload is missing a reasoning tree');
+  }
+
+  const metadataBase =
+    raw.metadata && typeof raw.metadata === 'object' ? { ...raw.metadata } : {};
+  if (queryOverride !== undefined) {
+    metadataBase.query = queryOverride;
+  } else if (typeof metadataBase.query !== 'string') {
+    metadataBase.query = '';
+  }
+
+  return {
+    reasoning_tree: tree,
+    final_answer: deriveFinalAnswer(tree, raw.final_answer ?? null),
+    trace: Array.isArray(raw.trace) ? [...raw.trace] : [],
+    metadata: metadataBase,
+  };
+}
+
+function buildRenderStateFromPayload(payload) {
+  const leaves = payload?.reasoning_tree || {};
+  const nodes = {};
+  for (const [leafId, leaf] of Object.entries(leaves)) {
+    if (!leaf || typeof leaf !== 'object') continue;
+    const title = leaf.title || leaf.description || 'Untitled';
+    const result =
+      typeof leaf.result === 'string'
+        ? leaf.result
+        : leaf.result != null
+        ? (() => {
+            try {
+              return JSON.stringify(leaf.result);
+            } catch {
+              return String(leaf.result);
+            }
+          })()
+        : typeof leaf.summary === 'string'
+        ? leaf.summary
+        : '(no result)';
+
+    nodes[leafId] = {
+      id: leaf.id || leafId,
+      name: String(title).slice(0, 60),
+      description: result,
+      depends_on: leaf.parent_leaf ? [leaf.parent_leaf] : [],
+      status: leaf.status || 'done',
+      tool_calls: Array.isArray(leaf.tool_calls) ? leaf.tool_calls : [],
+      parent: leaf.parent_leaf ?? null,
+      children: Array.isArray(leaf.child_leaves) ? leaf.child_leaves : [],
+    };
+  }
+
+  return {
+    nodes,
+    final: payload?.final_answer ?? deriveFinalAnswer(leaves, null),
+    trace: Array.isArray(payload?.trace) ? payload.trace : [],
+    root: 'leaf_0',
+  };
+}
+
+function summariseRenderState(state) {
+  const nodeCount = Object.keys(state?.nodes || {}).length;
+  let edgeCount = 0;
+  for (const node of Object.values(state?.nodes || {})) {
+    edgeCount += Array.isArray(node.depends_on) ? node.depends_on.length : 0;
+  }
+  return { nodeCount, edgeCount };
+}
+
+function applyTreePayload(payload, { updateQuery = true } = {}) {
+  lastTreePayload = {
+    reasoning_tree: payload.reasoning_tree,
+    final_answer: payload.final_answer ?? null,
+    trace: Array.isArray(payload.trace) ? payload.trace : [],
+    metadata: { ...(payload.metadata || {}) },
+  };
+
+  const renderState = buildRenderStateFromPayload(lastTreePayload);
+  const summary = summariseRenderState(renderState);
+  lastTreePayload.metadata.node_count = summary.nodeCount;
+  lastTreePayload.metadata.edge_count = summary.edgeCount;
+
+  if (
+    updateQuery &&
+    el.query &&
+    typeof lastTreePayload.metadata?.query === 'string'
+  ) {
+    el.query.value = lastTreePayload.metadata.query;
+  }
+
+  render(renderState);
+  fitToContent();
+  return { renderState, summary };
+}
+
+function exportCurrentTree() {
+  if (
+    !lastTreePayload ||
+    !lastTreePayload.reasoning_tree ||
+    !Object.keys(lastTreePayload.reasoning_tree).length
+  ) {
+    toast('Nothing to export yet. Run the agent or import a tree first.');
+    return;
+  }
+
+  const timestamp = new Date();
+  const safeStamp = timestamp.toISOString().replace(/[:.]/g, '-');
+  const nodeCount =
+    lastTreePayload.metadata?.node_count ??
+    Object.keys(lastTreePayload.reasoning_tree || {}).length;
+  let edgeCount = lastTreePayload.metadata?.edge_count ?? 0;
+  if (!edgeCount) {
+    for (const leaf of Object.values(lastTreePayload.reasoning_tree || {})) {
+      edgeCount += Array.isArray(leaf?.child_leaves) ? leaf.child_leaves.length : 0;
+    }
+  }
+
+  const exportPayload = {
+    version: TREE_EXPORT_VERSION,
+    exported_at: timestamp.toISOString(),
+    metadata: {
+      ...(lastTreePayload.metadata || {}),
+      node_count: nodeCount,
+      edge_count: edgeCount,
+    },
+    reasoning_tree: lastTreePayload.reasoning_tree,
+    final_answer: lastTreePayload.final_answer ?? null,
+  };
+  if (lastTreePayload.trace?.length) {
+    exportPayload.trace = lastTreePayload.trace;
+  }
+
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `reasoning-tree-${safeStamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  el.status.textContent = `Exported ${nodeCount} nodes to reasoning-tree-${safeStamp}.json.`;
+  toast('Reasoning tree downloaded');
+}
+
+async function handleImportTreeFile(event) {
+  const file = event.target?.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const raw = JSON.parse(text);
+    const normalized = normalizeTreePayload(raw);
+    if (!Object.keys(normalized.reasoning_tree || {}).length) {
+      toast('Imported file does not contain any nodes.');
+      el.status.textContent = 'Imported file did not include nodes.';
+      return;
+    }
+
+    const { summary } = applyTreePayload(normalized, { updateQuery: true });
+    toast(
+      `Imported ${summary.nodeCount} nodes and ${summary.edgeCount} connections from ${file.name}`
+    );
+    el.status.textContent = `Imported ${summary.nodeCount} nodes from ${file.name}.`;
+  } catch (err) {
+    console.error(err);
+    toast('Failed to import tree. Check the console for details.');
+    el.status.textContent = 'Import failed.';
+  } finally {
+    if (event.target) event.target.value = '';
+  }
+}
+
+function loadTreeFromData(raw, options = {}) {
+  const normalized = normalizeTreePayload(
+    raw,
+    options.query !== undefined ? options.query : undefined
+  );
+  if (!Object.keys(normalized.reasoning_tree || {}).length) {
+    throw new Error('Provided data does not contain any nodes');
+  }
+  return applyTreePayload(normalized, {
+    updateQuery: options.updateQuery ?? true,
+  });
+}
+
 function runAction(a) {
   const map = {
     fit: fitToContent,
@@ -197,7 +423,9 @@ function runAction(a) {
 function clearCanvas() {
   el.nodesLayer.innerHTML = '';
   el.edgesSvg.innerHTML = '';
-  el.finalContent.textContent = '';
+  el.finalContent.textContent = 'No answer yet.';
+  lastTreePayload = null;
+  el.status.textContent = 'Canvas cleared.';
   toast('Canvas cleared');
 }
 document.getElementById('clearBtn')?.addEventListener('click', clearCanvas);
@@ -243,38 +471,19 @@ function fitToContent() {
 
 async function runAgent() {
   try {
+    const query = (el.query?.value ?? '').trim();
     const data = await fetchRun();
-    const leaves = data.reasoning_tree || {};
-    if (!Object.keys(leaves).length) {
+    const normalized = normalizeTreePayload(data, query);
+    if (!Object.keys(normalized.reasoning_tree || {}).length) {
       el.status.textContent = 'No leaves returned.';
       toast('No leaves returned.');
       return;
     }
 
-    const nodes = {};
-    for (const [leafId, leaf] of Object.entries(leaves)) {
-      nodes[leafId] = {
-        id: leaf.id,
-        name: (leaf.title || leaf.description || 'Untitled').slice(0, 60),
-        description: leaf.result || leaf.summary || '(no result)',
-        depends_on: leaf.parent_leaf ? [leaf.parent_leaf] : [],
-        status: leaf.status || 'done',
-        tool_calls: leaf.tool_calls || [],
-        parent: leaf.parent_leaf,
-        children: leaf.child_leaves,
-      };
-    }
-    const finalAnswer = Object.values(leaves).find(
-      (l) => l.description === 'Final answer'
-    )?.result;
-
-    render({
-      nodes,
-      final: finalAnswer || data.final || null,
-      trace: [],
-      root: 'leaf_0',
-    });
-    fitToContent();
+    const { summary } = applyTreePayload(normalized, { updateQuery: false });
+    toast(
+      `Run complete — ${summary.nodeCount} nodes and ${summary.edgeCount} connections.`
+    );
   } catch (e) {
     console.error(e);
     el.status.textContent = 'Error: ' + (e?.message || e);
@@ -282,4 +491,11 @@ async function runAgent() {
   }
 }
 
-window.AgentGraphUI = { render, runAgent, fitToContent, updateTransform };
+window.AgentGraphUI = {
+  render,
+  runAgent,
+  fitToContent,
+  updateTransform,
+  loadTreeFromData,
+  exportCurrentTree,
+};
