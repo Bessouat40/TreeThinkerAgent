@@ -131,6 +131,23 @@
           <button id="hudZoomOut" class="icon-btn" title="Zoom out">－</button>
         </div>
         <div class="minimap"><svg id="minimap" viewBox="0 0 100 60"></svg></div>
+        <div
+          id="liveStream"
+          class="live-stream is-hidden"
+          aria-live="polite"
+          aria-atomic="false"
+        >
+          <div class="live-header">
+            <span class="live-pulse" aria-hidden="true"></span>
+            <div class="live-copy">
+              <div id="liveTitle" class="live-title">Live reasoning</div>
+              <div id="liveSubtitle" class="live-subtitle">
+                Waiting for the agent to begin…
+              </div>
+            </div>
+          </div>
+          <div id="liveEvents" class="live-events"></div>
+        </div>
         <div id="viewport" class="viewport">
           <div class="layers">
             <svg

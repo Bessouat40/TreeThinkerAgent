@@ -1,11 +1,13 @@
 import json
-from typing import Any, Dict, List, Optional
+import re
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
 from pydantic import BaseModel, Field, TypeAdapter
+
 from app.backend.core.agent.llm import LLM
 from app.backend.core.models.tool_calls import ToolCall
 from app.backend.core.reasoningTree.reasoning_tree import ReasoningTree
-
-import re
 
 def strip_json_markdown(response: str) -> str:
     return re.sub(r"^```(?:json)?\n|\n```$", "", response.strip())
@@ -23,16 +25,48 @@ class AgentManager:
         self.llm = llm
         self.final_answer: Optional[str] = None
 
-    def run(self) -> Dict[str, Any]:
-        context = self.reasoning_tree.get_reasoning_tree_context()
-        self.plan(context, parent_leaf_id="leaf_0")
-        final_answer = self.finalize()
-        return {
+    def _edge_count(self) -> int:
+        return sum(len(leaf.child_leaves) for leaf in self.reasoning_tree.leaves.values())
+
+    def _snapshot(self, latest_leaf_id: Optional[str] = None) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
             "reasoning_tree": self.reasoning_tree.to_dict(),
-            "final_answer": final_answer,
+            "final_answer": self.final_answer,
+            "metadata": {
+                "query": self.user_input,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "node_count": len(self.reasoning_tree.leaves),
+                "edge_count": self._edge_count(),
+            },
         }
 
-    def plan(self, context: str, parent_leaf_id: str, max_branch_len: int = 5):
+        if latest_leaf_id and latest_leaf_id in self.reasoning_tree.leaves:
+            payload["latest_leaf_id"] = latest_leaf_id
+            payload["latest_leaf"] = self.reasoning_tree.leaves[latest_leaf_id].to_dict()
+
+        return payload
+
+    def _emit_update(
+        self,
+        on_update: Optional[Callable[[Dict[str, Any]], None]],
+        latest_leaf_id: Optional[str] = None,
+    ) -> None:
+        if callable(on_update):
+            on_update(self._snapshot(latest_leaf_id=latest_leaf_id))
+
+    def run(self, on_update: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
+        context = self.reasoning_tree.get_reasoning_tree_context()
+        self.plan(context, parent_leaf_id="leaf_0", on_update=on_update)
+        self.finalize(on_update=on_update)
+        return self._snapshot()
+
+    def plan(
+        self,
+        context: str,
+        parent_leaf_id: str,
+        max_branch_len: int = 5,
+        on_update: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ) -> None:
         response = self.llm.generate(context)
         cleaned = strip_json_markdown(response)
         try:
@@ -79,14 +113,21 @@ class AgentManager:
                 result=result
             )
 
+            self._emit_update(on_update, latest_leaf_id=new_leaf_id)
+
             branch_depth = self.reasoning_tree.get_branch_depth(new_leaf_id)
             if branch_depth >= max_branch_len:
                 continue
 
             enriched_context = self.reasoning_tree.get_leaf_context(new_leaf_id)
-            self.plan(enriched_context, parent_leaf_id=new_leaf_id, max_branch_len=max_branch_len)
+            self.plan(
+                enriched_context,
+                parent_leaf_id=new_leaf_id,
+                max_branch_len=max_branch_len,
+                on_update=on_update,
+            )
 
-    def finalize(self) -> str:
+    def finalize(self, on_update: Optional[Callable[[Dict[str, Any]], None]] = None) -> str:
         """Generate the final answer based on every terminal leaf."""
         leaves = self.reasoning_tree.get_reasoning_tree_context()
 
@@ -100,11 +141,12 @@ class AgentManager:
             system_prompt=FINAL_PROMPT.strip()
         )
 
-        self.reasoning_tree.add_leaf(
+        final_leaf_id = self.reasoning_tree.add_leaf(
             description="Final answer",
             parent_leaf="leaf_0",
             tool_calls=[],
             result=final_answer
         )
         self.final_answer = final_answer
+        self._emit_update(on_update, latest_leaf_id=final_leaf_id)
         return final_answer

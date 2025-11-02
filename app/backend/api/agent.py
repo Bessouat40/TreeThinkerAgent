@@ -1,9 +1,12 @@
 """HTTP endpoints that expose the research agent."""
+import asyncio
+import json
 import os
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
 
 from app.backend.api.tools.web import fetch_url, web_search
 from app.backend.core.agent.agent_manager import AgentManager
@@ -66,9 +69,7 @@ def _build_llm(
     return inst
 
 
-@router.post("/run")
-async def run_agent(req: AgentRequest):
-    """Run the autonomous research agent for the provided query."""
+def _init_manager(req: AgentRequest) -> AgentManager:
     try:
         llm = _build_llm(
             provider_override=(req.llmProvider or None),
@@ -82,9 +83,56 @@ async def run_agent(req: AgentRequest):
     for tool_fn in (web_search, fetch_url, add_a_b):
         llm.register_decorated_tool(tool_fn)
 
-    manager = AgentManager(user_input=req.query, llm=llm)
+    return AgentManager(user_input=req.query, llm=llm)
+
+
+@router.post("/run")
+async def run_agent(req: AgentRequest):
+    """Run the autonomous research agent for the provided query."""
+    manager = _init_manager(req)
     try:
         result = manager.run()
         return result
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Agent execution failed: {exc}") from exc
+
+
+@router.post("/run-stream")
+async def run_agent_stream(req: AgentRequest):
+    """Stream reasoning tree updates as the agent plans and executes."""
+
+    manager = _init_manager(req)
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[dict] = asyncio.Queue()
+
+    loop.call_soon(queue.put_nowait, {"type": "start", "payload": {"query": req.query}})
+
+    def emit_update(snapshot: dict) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, {"type": "update", "payload": snapshot})
+
+    async def worker() -> None:
+        def _run() -> None:
+            try:
+                result = manager.run(on_update=emit_update)
+                loop.call_soon_threadsafe(queue.put_nowait, {"type": "final", "payload": result})
+            except Exception as exc:  # pragma: no cover - streamed to client
+                loop.call_soon_threadsafe(
+                    queue.put_nowait,
+                    {"type": "error", "error": str(exc)},
+                )
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, {"type": "done"})
+
+        await loop.run_in_executor(None, _run)
+
+    asyncio.create_task(worker())
+
+    async def event_generator():
+        while True:
+            event = await queue.get()
+            if event.get("type") == "done":
+                break
+            yield f"data: {json.dumps(event)}\n\n"
+
+    headers = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers=headers)

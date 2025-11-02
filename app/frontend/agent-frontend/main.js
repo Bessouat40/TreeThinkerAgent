@@ -17,9 +17,10 @@ import {
 } from './canvas/panzoom.js';
 import { drawMinimapFrame, getMinimapState } from './canvas/minimap.js';
 import { render } from './canvas/render.js';
-import { runAgent as fetchRun } from './data/backend.js';
+import { streamAgent } from './data/backend.js';
 import { initProviderDefaults } from './ui/defaults.js';
 import { NODE_W, NODE_H } from './core/constants.js';
+import { escHTML, shortText } from './core/utils.js';
 
 const FINAL_PREF_KEY = 'ags:finalDrawer';
 function saveFinalPrefs(p) {
@@ -45,7 +46,13 @@ const btnExpandFinal = document.getElementById('btnExpandFinal');
 const btnMaxFinal = document.getElementById('btnMaxFinal');
 
 const TREE_EXPORT_VERSION = 1;
+const MAX_LIVE_EVENTS = 80;
 let lastTreePayload = null;
+let activeRun = null;
+let hasInitialFit = false;
+let runCancelled = false;
+let finalToastShown = false;
+let liveSequence = 0;
 
 function applyFinalMode(mode) {
   if (!finalDrawer) return;
@@ -113,6 +120,142 @@ copyFinalBtn?.addEventListener('click', async () => {
     toast('Unable to copy');
   }
 });
+
+function setRunningUI(running) {
+  if (el.runBtn) {
+    el.runBtn.textContent = running ? 'Stop' : 'Run';
+    el.runBtn.classList.toggle('danger', running);
+    el.runBtn.setAttribute('aria-pressed', String(running));
+  }
+}
+
+function resetLiveStream(query) {
+  liveSequence = 0;
+  if (!el.liveStream) return;
+  el.liveStream.classList.remove('is-hidden', 'is-complete', 'is-error', 'is-cancelled');
+  if (el.liveEvents) el.liveEvents.innerHTML = '';
+  if (el.liveTitle) el.liveTitle.textContent = 'Live reasoning';
+  const label = query ? `“${shortText(query, 80)}”` : 'Streaming agent thoughts…';
+  setLiveSubtitle(label);
+}
+
+function setLiveSubtitle(text) {
+  if (el.liveSubtitle) el.liveSubtitle.textContent = text;
+}
+
+function markLiveComplete(message = 'Final answer ready.') {
+  if (!el.liveStream) return;
+  el.liveStream.classList.remove('is-error', 'is-cancelled');
+  el.liveStream.classList.add('is-complete');
+  setLiveSubtitle(message);
+}
+
+function markLiveError(message) {
+  if (!el.liveStream) return;
+  el.liveStream.classList.remove('is-complete', 'is-cancelled');
+  el.liveStream.classList.add('is-error');
+  setLiveSubtitle(message);
+}
+
+function markLiveCancelled() {
+  if (!el.liveStream) return;
+  el.liveStream.classList.remove('is-error', 'is-complete');
+  el.liveStream.classList.add('is-cancelled');
+  setLiveSubtitle('Run cancelled.');
+}
+
+function appendLiveEvent(leaf, { isFinal = false, isError = false } = {}) {
+  if (!leaf || !el.liveEvents) return;
+  const stepNumber = isFinal ? liveSequence : ++liveSequence;
+  const stepLabel = isFinal ? 'Final answer' : `Step ${stepNumber}`;
+  const wrapper = document.createElement('div');
+  const classes = ['live-item'];
+  if (isFinal || (leaf.description || '').toLowerCase() === 'final answer') classes.push('final');
+  if (isError) classes.push('error');
+  wrapper.className = classes.join(' ');
+
+  const heading = escHTML(leaf.description || leaf.id || 'Reasoning step');
+  const source = leaf.result ?? leaf.summary ?? '';
+  const body = escHTML(shortText(source || '(awaiting result)', isFinal ? 320 : 220));
+
+  wrapper.innerHTML = `
+    <span class="live-step">${escHTML(stepLabel)}</span>
+    <div class="live-heading">${heading}</div>
+    <div class="live-body">${body}</div>
+  `;
+
+  el.liveEvents.appendChild(wrapper);
+  while (el.liveEvents.children.length > MAX_LIVE_EVENTS) {
+    el.liveEvents.removeChild(el.liveEvents.firstChild);
+  }
+  el.liveEvents.scrollTo({ top: el.liveEvents.scrollHeight, behavior: 'smooth' });
+}
+
+function handleStreamEvent(event) {
+  if (!event || typeof event !== 'object') return;
+
+  if (event.type === 'start') {
+    setLiveSubtitle('Agent planning…');
+    if (el.status) el.status.textContent = 'Agent planning…';
+    return;
+  }
+
+  if (event.type === 'cancelled') {
+    if (runCancelled) {
+      markLiveCancelled();
+      if (el.status) el.status.textContent = 'Run cancelled.';
+    }
+    return;
+  }
+
+  if (event.type === 'error') {
+    const message = event.error || 'Agent error';
+    markLiveError(message);
+    if (el.status) el.status.textContent = `Error: ${message}`;
+    appendLiveEvent({ description: 'Error', result: message }, { isError: true });
+    toast(`Error: ${message}`);
+    return;
+  }
+
+  if (event.type !== 'update' && event.type !== 'final') {
+    return;
+  }
+
+  const snapshot = event.payload;
+  if (!snapshot || typeof snapshot !== 'object') return;
+
+  const normalized = normalizeTreePayload(
+    snapshot,
+    snapshot.metadata?.query !== undefined ? snapshot.metadata.query : undefined
+  );
+  const { summary } = applyTreePayload(normalized, {
+    updateQuery: false,
+    fitViewport: !hasInitialFit,
+  });
+  if (!hasInitialFit) hasInitialFit = true;
+
+  const latestLeaf = snapshot.latest_leaf;
+  if (latestLeaf) {
+    appendLiveEvent(latestLeaf, { isFinal: event.type === 'final' });
+  }
+
+  const nodes = summary.nodeCount ?? summary.node_count ?? 0;
+  const edges = summary.edgeCount ?? summary.edge_count ?? 0;
+  const stepCount = Math.max(0, nodes - 1);
+  if (event.type === 'final') {
+    markLiveComplete(`Completed with ${stepCount} steps.`);
+    const statusText = `Run complete — ${nodes} nodes and ${edges} connections.`;
+    if (el.status) el.status.textContent = statusText;
+    if (!finalToastShown) {
+      toast('Final answer ready.');
+      finalToastShown = true;
+    }
+  } else {
+    const statusText = `Streaming — ${nodes} nodes and ${edges} connections.`;
+    if (el.status) el.status.textContent = statusText;
+    setLiveSubtitle(`${stepCount} steps · ${edges} links`);
+  }
+}
 
 initTabs();
 bindInspector();
@@ -281,7 +424,7 @@ function summariseRenderState(state) {
   return { nodeCount, edgeCount };
 }
 
-function applyTreePayload(payload, { updateQuery = true } = {}) {
+function applyTreePayload(payload, { updateQuery = true, fitViewport = true } = {}) {
   lastTreePayload = {
     reasoning_tree: payload.reasoning_tree,
     final_answer: payload.final_answer ?? null,
@@ -303,7 +446,9 @@ function applyTreePayload(payload, { updateQuery = true } = {}) {
   }
 
   render(renderState);
-  fitToContent();
+  if (fitViewport) {
+    fitToContent();
+  }
   return { renderState, summary };
 }
 
@@ -397,6 +542,7 @@ function loadTreeFromData(raw, options = {}) {
   }
   return applyTreePayload(normalized, {
     updateQuery: options.updateQuery ?? true,
+    fitViewport: options.fitViewport ?? true,
   });
 }
 
@@ -470,24 +616,51 @@ function fitToContent() {
 }
 
 async function runAgent() {
-  try {
-    const query = (el.query?.value ?? '').trim();
-    const data = await fetchRun();
-    const normalized = normalizeTreePayload(data, query);
-    if (!Object.keys(normalized.reasoning_tree || {}).length) {
-      el.status.textContent = 'No leaves returned.';
-      toast('No leaves returned.');
-      return;
+  if (activeRun) {
+    if (!runCancelled) {
+      runCancelled = true;
+      setLiveSubtitle('Stopping agent…');
+      toast('Stopping agent…');
+      activeRun.cancel();
     }
+    return;
+  }
 
-    const { summary } = applyTreePayload(normalized, { updateQuery: false });
-    toast(
-      `Run complete — ${summary.nodeCount} nodes and ${summary.edgeCount} connections.`
-    );
-  } catch (e) {
-    console.error(e);
-    el.status.textContent = 'Error: ' + (e?.message || e);
-    toast('Error: ' + (e?.message || e));
+  const query = (el.query?.value ?? '').trim();
+  hasInitialFit = false;
+  runCancelled = false;
+  finalToastShown = false;
+  resetLiveStream(query);
+  setRunningUI(true);
+  if (el.status) el.status.textContent = 'Starting agent…';
+  toast('Starting agent…');
+
+  const { promise, cancel } = streamAgent(handleStreamEvent);
+  activeRun = { cancel };
+
+  try {
+    await promise;
+    if (runCancelled) {
+      markLiveCancelled();
+      if (el.status) el.status.textContent = 'Run cancelled.';
+      toast('Run cancelled.');
+    }
+  } catch (err) {
+    if (runCancelled) {
+      markLiveCancelled();
+      if (el.status) el.status.textContent = 'Run cancelled.';
+      toast('Run cancelled.');
+    } else {
+      console.error(err);
+      const message = err?.message || 'Streaming failed';
+      markLiveError(message);
+      if (el.status) el.status.textContent = `Error: ${message}`;
+      toast(`Error: ${message}`);
+    }
+  } finally {
+    activeRun = null;
+    setRunningUI(false);
+    runCancelled = false;
   }
 }
 
