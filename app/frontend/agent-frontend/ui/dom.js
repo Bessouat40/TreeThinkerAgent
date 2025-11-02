@@ -11,6 +11,7 @@ export const el = {
   apiKey: document.getElementById('apiKey'),
   query: document.getElementById('query'),
   finalContent: document.getElementById('finalContent'),
+  finalDrawer: document.getElementById('finalDrawer'),
   nodePanel: document.getElementById('nodePanel'),
   nodePanelTitle: document.getElementById('nodePanelTitle'),
   nodeContent: document.getElementById('nodeContent'),

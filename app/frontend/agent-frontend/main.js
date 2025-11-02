@@ -11,11 +11,15 @@ import {
   zoomOut,
   updateTransform,
   setOnTransform,
+  setOrigin,
+  getView,
+  getViewportSize,
 } from './canvas/panzoom.js';
-import { drawMinimapFrame } from './canvas/minimap.js';
+import { drawMinimapFrame, getMinimapState } from './canvas/minimap.js';
 import { render } from './canvas/render.js';
 import { runAgent as fetchRun } from './data/backend.js';
 import { initProviderDefaults } from './ui/defaults.js';
+import { NODE_W, NODE_H } from './core/constants.js';
 
 const FINAL_PREF_KEY = 'ags:finalDrawer';
 function saveFinalPrefs(p) {
@@ -199,17 +203,42 @@ function clearCanvas() {
 document.getElementById('clearBtn')?.addEventListener('click', clearCanvas);
 
 function fitToContent() {
-  const box = el.edgesSvg.getBBox
-    ? el.edgesSvg.getBBox()
-    : { x: 0, y: 0, width: 1000, height: 600 };
-  const pad = 80;
-  const vw = window.innerWidth - pad * 2 - 320;
-  const vh = window.innerHeight - pad * 2 - 160;
-  const sx = vw / (box.width + pad * 2);
-  const sy = vh / (box.height + pad * 2);
-  const s = Math.max(0.45, Math.min(2.0, Math.min(sx, sy)));
-  setScale(s, window.innerWidth / 2, window.innerHeight / 2);
-  drawMinimapFrame();
+  const { nodes } = getMinimapState();
+  if (!nodes.length) return;
+
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const node of nodes) {
+    if (!node) continue;
+    minX = Math.min(minX, node.x);
+    minY = Math.min(minY, node.y);
+    maxX = Math.max(maxX, node.x + NODE_W);
+    maxY = Math.max(maxY, node.y + NODE_H);
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return;
+
+  const boundsWidth = Math.max(1, maxX - minX);
+  const boundsHeight = Math.max(1, maxY - minY);
+
+  const { width: viewWidth, height: viewHeight } = getViewportSize();
+  const basePad = 80;
+  const padX = Math.min(basePad, viewWidth / 4);
+  const padY = Math.min(basePad, viewHeight / 4);
+  const innerWidth = Math.max(1, viewWidth - padX * 2);
+  const innerHeight = Math.max(1, viewHeight - padY * 2);
+
+  const scaleX = innerWidth / boundsWidth;
+  const scaleY = innerHeight / boundsHeight;
+  const desiredScale = Math.min(scaleX, scaleY);
+  setScale(desiredScale);
+  const { scale } = getView();
+
+  const originX = padX - scale * minX;
+  const originY = padY - scale * minY;
+  setOrigin(originX, originY);
 }
 
 async function runAgent() {
