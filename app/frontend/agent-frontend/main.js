@@ -36,6 +36,26 @@ function loadFinalPrefs() {
   }
 }
 
+const LIVE_PREF_KEY = 'ags:livePanel';
+function saveLivePrefs(p) {
+  try {
+    localStorage.setItem(LIVE_PREF_KEY, JSON.stringify(p));
+  } catch {}
+}
+function loadLivePrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(LIVE_PREF_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+let livePrefs = loadLivePrefs();
+function updateLivePrefs(patch) {
+  livePrefs = { ...livePrefs, ...patch };
+  saveLivePrefs(livePrefs);
+}
+
 const finalDrawer = document.getElementById('finalDrawer');
 const copyFinalBtn = document.getElementById('copyFinal');
 
@@ -47,6 +67,8 @@ const btnMaxFinal = document.getElementById('btnMaxFinal');
 
 const TREE_EXPORT_VERSION = 1;
 const MAX_LIVE_EVENTS = 80;
+const LIVE_TOGGLE_DEFAULT_LABEL = 'Show live reasoning';
+const LIVE_TOGGLE_UPDATES_LABEL = 'Show live reasoning (updates)';
 let lastTreePayload = null;
 let activeRun = null;
 let hasInitialFit = false;
@@ -121,6 +143,88 @@ copyFinalBtn?.addEventListener('click', async () => {
   }
 });
 
+function isLiveHidden() {
+  return el.liveStream?.classList.contains('is-user-hidden') ?? false;
+}
+
+function isLiveCollapsed() {
+  return el.liveStream?.classList.contains('is-collapsed') ?? false;
+}
+
+function clearLiveActivityFlag() {
+  if (!el.showLiveBtn) return;
+  el.showLiveBtn.classList.remove('has-updates');
+  el.showLiveBtn.textContent = LIVE_TOGGLE_DEFAULT_LABEL;
+}
+
+function flagLiveActivity() {
+  if (!isLiveHidden() || !el.showLiveBtn) return;
+  el.showLiveBtn.classList.add('has-updates');
+  el.showLiveBtn.textContent = LIVE_TOGGLE_UPDATES_LABEL;
+}
+
+function applyLiveHidden(hidden, { persist = false, reveal = true } = {}) {
+  if (!el.liveStream) return;
+
+  el.liveStream.classList.toggle('is-user-hidden', hidden);
+  if (hidden) {
+    clearLiveActivityFlag();
+  } else {
+    if (reveal) {
+      el.liveStream.classList.remove('is-hidden');
+    }
+    clearLiveActivityFlag();
+  }
+
+  const effectiveHidden =
+    hidden || el.liveStream.classList.contains('is-hidden');
+  el.liveStream.setAttribute('aria-hidden', String(effectiveHidden));
+
+  if (el.showLiveBtn) {
+    el.showLiveBtn.classList.toggle('is-hidden', !effectiveHidden);
+    el.showLiveBtn.setAttribute('aria-expanded', String(!effectiveHidden));
+    el.showLiveBtn.setAttribute('aria-pressed', String(effectiveHidden));
+    el.showLiveBtn.setAttribute('title', LIVE_TOGGLE_DEFAULT_LABEL);
+  }
+
+  if (persist) updateLivePrefs({ hidden });
+}
+
+function applyLiveCollapsed(collapsed, { persist = false } = {}) {
+  if (!el.liveStream) return;
+
+  el.liveStream.classList.toggle('is-collapsed', collapsed);
+  el.liveStream.setAttribute('aria-expanded', String(!collapsed));
+
+  if (el.collapseLiveBtn) {
+    el.collapseLiveBtn.textContent = collapsed ? 'Expand' : 'Collapse';
+    el.collapseLiveBtn.setAttribute('aria-pressed', String(collapsed));
+    el.collapseLiveBtn.setAttribute(
+      'title',
+      collapsed ? 'Expand live reasoning' : 'Collapse live reasoning'
+    );
+  }
+
+  if (persist) updateLivePrefs({ collapsed });
+}
+
+applyLiveCollapsed(Boolean(livePrefs.collapsed));
+applyLiveHidden(Boolean(livePrefs.hidden), { reveal: false });
+
+el.collapseLiveBtn?.addEventListener('click', () => {
+  const next = !isLiveCollapsed();
+  applyLiveCollapsed(next, { persist: true });
+});
+
+el.hideLiveBtn?.addEventListener('click', () => {
+  applyLiveHidden(true, { persist: true });
+  el.showLiveBtn?.focus({ preventScroll: true });
+});
+
+el.showLiveBtn?.addEventListener('click', () => {
+  applyLiveHidden(false, { persist: true });
+});
+
 function setRunningUI(running) {
   if (el.runBtn) {
     el.runBtn.textContent = running ? 'Stop' : 'Run';
@@ -132,11 +236,17 @@ function setRunningUI(running) {
 function resetLiveStream(query) {
   liveSequence = 0;
   if (!el.liveStream) return;
-  el.liveStream.classList.remove('is-hidden', 'is-complete', 'is-error', 'is-cancelled');
+  el.liveStream.classList.remove('is-complete', 'is-error', 'is-cancelled');
   if (el.liveEvents) el.liveEvents.innerHTML = '';
   if (el.liveTitle) el.liveTitle.textContent = 'Live reasoning';
   const label = query ? `“${shortText(query, 80)}”` : 'Streaming agent thoughts…';
   setLiveSubtitle(label);
+
+  applyLiveCollapsed(Boolean(livePrefs.collapsed));
+  applyLiveHidden(Boolean(livePrefs.hidden));
+  if (!isLiveHidden()) {
+    clearLiveActivityFlag();
+  }
 }
 
 function setLiveSubtitle(text) {
@@ -148,6 +258,7 @@ function markLiveComplete(message = 'Final answer ready.') {
   el.liveStream.classList.remove('is-error', 'is-cancelled');
   el.liveStream.classList.add('is-complete');
   setLiveSubtitle(message);
+  flagLiveActivity();
 }
 
 function markLiveError(message) {
@@ -155,6 +266,7 @@ function markLiveError(message) {
   el.liveStream.classList.remove('is-complete', 'is-cancelled');
   el.liveStream.classList.add('is-error');
   setLiveSubtitle(message);
+  flagLiveActivity();
 }
 
 function markLiveCancelled() {
@@ -162,6 +274,7 @@ function markLiveCancelled() {
   el.liveStream.classList.remove('is-error', 'is-complete');
   el.liveStream.classList.add('is-cancelled');
   setLiveSubtitle('Run cancelled.');
+  flagLiveActivity();
 }
 
 function appendLiveEvent(leaf, { isFinal = false, isError = false } = {}) {
@@ -189,6 +302,8 @@ function appendLiveEvent(leaf, { isFinal = false, isError = false } = {}) {
     el.liveEvents.removeChild(el.liveEvents.firstChild);
   }
   el.liveEvents.scrollTo({ top: el.liveEvents.scrollHeight, behavior: 'smooth' });
+
+  flagLiveActivity();
 }
 
 function handleStreamEvent(event) {
@@ -323,6 +438,16 @@ window.addEventListener('keydown', (e) => {
     const cur = getFinalMode();
     const next = order[(order.indexOf(cur) + 1) % order.length];
     applyFinalMode(next);
+  }
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'l') {
+    e.preventDefault();
+    const next = !isLiveCollapsed();
+    applyLiveCollapsed(next, { persist: true });
+  }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+    e.preventDefault();
+    const nextHidden = !isLiveHidden();
+    applyLiveHidden(nextHidden, { persist: true });
   }
 });
 
