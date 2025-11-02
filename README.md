@@ -60,7 +60,7 @@ cd app/frontend/agent-frontend
 npm install
 ```
 
-### 2. Configure environment variables
+### 2. Configure environment variables (optional)
 
 | Variable          | Description                                                       | Default               |
 | ----------------- | ----------------------------------------------------------------- | --------------------- |
@@ -77,7 +77,7 @@ npm install
 uvicorn app.backend.main:app --reload
 ```
 
-### 4. Run the frontend (optional)
+### 4. Run the frontend
 
 ```bash
 cd app/frontend/agent-frontend

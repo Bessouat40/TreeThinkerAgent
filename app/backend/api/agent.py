@@ -1,4 +1,3 @@
-"""HTTP endpoints that expose the research agent."""
 import asyncio
 import json
 import os
@@ -115,7 +114,7 @@ async def run_agent_stream(req: AgentRequest):
             try:
                 result = manager.run(on_update=emit_update)
                 loop.call_soon_threadsafe(queue.put_nowait, {"type": "final", "payload": result})
-            except Exception as exc:  # pragma: no cover - streamed to client
+            except Exception as exc:
                 loop.call_soon_threadsafe(
                     queue.put_nowait,
                     {"type": "error", "error": str(exc)},

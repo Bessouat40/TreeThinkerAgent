@@ -4,7 +4,7 @@ let scale = 1,
   origin = { x: 40, y: 60 },
   isPanning = false,
   panStart = { x: 0, y: 0 };
-let onTransform = () => {}; // callback (minimap, density…)
+let onTransform = () => {};
 
 function clampSize(value) {
   return Math.max(1, Math.floor(value));
@@ -12,7 +12,11 @@ function clampSize(value) {
 
 export function getViewportSize() {
   const root = el.viewport?.parentElement;
-  if (!root) return { width: clampSize(window.innerWidth), height: clampSize(window.innerHeight) };
+  if (!root)
+    return {
+      width: clampSize(window.innerWidth),
+      height: clampSize(window.innerHeight),
+    };
 
   const rootRect = root.getBoundingClientRect();
   let width = rootRect.width;
