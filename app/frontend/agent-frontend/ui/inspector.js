@@ -128,6 +128,10 @@ export function openInspectorRich(node) {
   el.nodePanel.setAttribute('aria-hidden', 'false');
 }
 
+export function openInspector(node) {
+  return openInspectorRich(node);
+}
+
 export function bindInspector() {
   document
     .getElementById('closeNode')
