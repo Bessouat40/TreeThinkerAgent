@@ -212,6 +212,18 @@ button.ghost {
   margin-top: 12px;
 }
 
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.meta-grid strong {
+  display: block;
+  margin-top: 4px;
+}
+
 .alert {
   border-radius: 12px;
   padding: 12px 14px;
@@ -397,6 +409,12 @@ button.ghost {
 .detail-block ul {
   padding-left: 18px;
   margin: 6px 0;
+}
+
+.tool-result {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 13px;
 }
 
 .side-placeholder {

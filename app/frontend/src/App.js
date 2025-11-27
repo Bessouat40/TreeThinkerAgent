@@ -1,35 +1,60 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import FlowCanvas from './components/FlowCanvas';
 import './App.css';
 
-const fallbackNodes = [
-  {
-    id: 'intro',
-    label: 'Planning',
-    position: { x: 60, y: 60 },
-    data: {
-      label: 'Planning',
-      state: 'idle',
-      summary: 'Drafting the reasoning steps',
-      reasoning: 'Waiting for a new run to start.',
-    },
-  },
-  {
-    id: 'execute',
-    label: 'Execution',
-    position: { x: 340, y: 200 },
-    data: {
-      label: 'Execution',
-      state: 'idle',
-      summary: 'Will stream tool calls here',
-      reasoning: 'No active task yet.',
-    },
-  },
-];
+const COLUMN_GAP = 260;
+const ROW_GAP = 170;
+const PADDING = 40;
 
-const fallbackEdges = [
-  { id: 'e1-2', source: 'intro', target: 'execute', label: 'flows to' },
-];
+const buildGraphFromTree = (reasoningTree = {}) => {
+  const leaves = Object.values(reasoningTree || {});
+  const depthCache = {};
+  const depthCounts = {};
+
+  const computeDepth = (leafId) => {
+    if (depthCache[leafId] !== undefined) return depthCache[leafId];
+    const leaf = reasoningTree[leafId];
+    if (!leaf || !leaf.parent_leaf) {
+      depthCache[leafId] = 0;
+      return 0;
+    }
+    depthCache[leafId] = 1 + computeDepth(leaf.parent_leaf);
+    return depthCache[leafId];
+  };
+
+  const nodes = leaves.map((leaf, index) => {
+    const depth = computeDepth(leaf.id);
+    depthCounts[depth] = (depthCounts[depth] || 0) + 1;
+    const rowIndex = depthCounts[depth] - 1;
+
+    return {
+      id: leaf.id,
+      position: {
+        x: PADDING + depth * COLUMN_GAP,
+        y: PADDING + rowIndex * ROW_GAP,
+      },
+      data: {
+        label: leaf.description || `Leaf ${index + 1}`,
+        state: leaf.result ? 'done' : 'running',
+        summary: leaf.result || 'Awaiting result…',
+        reasoning: leaf.result,
+        tools: (leaf.tool_calls || []).map((call) => call.tool_name),
+        toolCalls: leaf.tool_calls || [],
+      },
+    };
+  });
+
+  const edges = leaves
+    .filter((leaf) => leaf.parent_leaf)
+    .map((leaf, index) => ({
+      id: `edge-${leaf.parent_leaf}-${leaf.id}-${index}`,
+      source: leaf.parent_leaf,
+      target: leaf.id,
+      label: 'next',
+    }));
+
+  return { nodes, edges };
+};
 
 function App() {
   const [prompt, setPrompt] = useState('');
@@ -37,17 +62,15 @@ function App() {
   const [report, setReport] = useState('');
   const [graphError, setGraphError] = useState('');
   const [uploadError, setUploadError] = useState('');
-  const [polling, setPolling] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [graphMeta, setGraphMeta] = useState({ runId: null, lastUpdated: null });
-
-  const [nodes, setNodes] = useState(fallbackNodes);
-  const [edges, setEdges] = useState(fallbackEdges);
+  const [metadata, setMetadata] = useState({ query: '', updated_at: null, node_count: 0, edge_count: 0 });
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
 
   const fileInputRef = useRef(null);
-  const pollingRef = useRef(null);
+  const snapshotRef = useRef(null);
 
   const statusLabel = useMemo(() => {
     const normalized = status?.toLowerCase();
@@ -64,8 +87,8 @@ function App() {
         ...node,
         id: node.id?.toString() || `node-${index + 1}`,
         position: node.position || {
-          x: (index % 3) * 260 + 40,
-          y: Math.floor(index / 3) * 180 + 60,
+          x: (index % 3) * COLUMN_GAP + PADDING,
+          y: Math.floor(index / 3) * ROW_GAP + PADDING,
         },
         data: {
           label: node.data?.label || node.label || `Node ${index + 1}`,
@@ -73,7 +96,7 @@ function App() {
           summary: node.data?.summary || node.summary,
           reasoning: node.data?.reasoning || node.reasoning || 'Awaiting details.',
           tools: node.data?.tools || node.tools || [],
-          intermediates: node.data?.intermediates || node.intermediates || {},
+          toolCalls: node.data?.toolCalls || node.toolCalls || [],
         },
       })),
     [nodes],
@@ -91,105 +114,139 @@ function App() {
     [edges],
   );
 
-  const refreshGraph = useCallback(
-    async (silent = false) => {
-      try {
-        if (!silent) {
-          setGraphError('');
-          setIsLoading(true);
+  const applySnapshot = useCallback((snapshot) => {
+    if (!snapshot || !snapshot.reasoning_tree) return;
+    snapshotRef.current = snapshot;
+    const { nodes: derivedNodes, edges: derivedEdges } = buildGraphFromTree(snapshot.reasoning_tree);
+    setNodes(derivedNodes);
+    setEdges(derivedEdges);
+    setReport(snapshot.final_answer || '');
+    setMetadata({
+      query: snapshot.metadata?.query || prompt,
+      updated_at: snapshot.metadata?.updated_at || new Date().toISOString(),
+      node_count: snapshot.metadata?.node_count ?? derivedNodes.length,
+      edge_count: snapshot.metadata?.edge_count ?? derivedEdges.length,
+    });
+    setStatus(snapshot.final_answer ? 'done' : 'running');
+  }, [prompt]);
+
+  const handleStreamEvent = useCallback(
+    (event) => {
+      if (!event) return;
+      if (event.type === 'start') {
+        setStatus('running');
+        setMetadata((prev) => ({ ...prev, query: event.payload?.query || prompt, updated_at: new Date().toISOString() }));
+        return;
+      }
+
+      if (event.type === 'update' || event.type === 'final') {
+        applySnapshot(event.payload);
+        if (event.type === 'final') {
+          setStatus('done');
         }
-        const query = graphMeta.runId ? `?run_id=${graphMeta.runId}` : '';
-        const response = await fetch(`/api/graph${query}`);
-        if (!response.ok) {
-          throw new Error('Unable to fetch the graph from the backend.');
-        }
-        const data = await response.json();
-        setNodes(data.nodes || []);
-        setEdges(data.edges || []);
-        setStatus(data.status || status);
-        setReport(data.report || '');
-        setGraphMeta((prev) => ({
-          ...prev,
-          lastUpdated: new Date().toISOString(),
-          runId: data.run_id || data.runId || prev.runId,
-        }));
-        if (data.status && data.status.toLowerCase() === 'done') {
-          setPolling(false);
-        }
-        if (data.status && data.status.toLowerCase() === 'error') {
-          setPolling(false);
-          setGraphError('The backend reported an error while generating the graph.');
-        }
-      } catch (error) {
-        setGraphError(error.message);
-      } finally {
-        if (!silent) {
-          setIsLoading(false);
-        }
+        return;
+      }
+
+      if (event.type === 'error') {
+        setGraphError(event.error || 'The agent reported an error.');
+        setStatus('error');
       }
     },
-    [graphMeta.runId, status],
+    [applySnapshot, prompt],
   );
+
+  const consumeStream = useCallback(
+    async (response) => {
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Streaming is not supported by this browser.');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split('\n\n');
+        buffer = chunks.pop() || '';
+        chunks.forEach((chunk) => {
+          const line = chunk.trim();
+          if (!line.startsWith('data:')) return;
+          try {
+            const event = JSON.parse(line.replace(/^data:\s*/, ''));
+            handleStreamEvent(event);
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Failed to parse stream chunk', err);
+          }
+        });
+      }
+      setStatus((prev) => (prev === 'error' ? 'error' : 'done'));
+    },
+    [handleStreamEvent],
+  );
+
+  const fallbackRun = useCallback(async () => {
+    const response = await fetch('/api/agent/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: prompt }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Agent run failed.');
+    }
+
+    const payload = await response.json();
+    applySnapshot(payload);
+    setStatus('done');
+  }, [applySnapshot, prompt]);
 
   const handleRun = useCallback(
     async (event) => {
       event.preventDefault();
       if (!prompt.trim()) return;
+      setIsLoading(true);
+      setGraphError('');
+      setReport('');
+      setStatus('running');
+      setShowReport(true);
+      setSelectedNode(null);
+
       try {
-        setIsLoading(true);
-        setGraphError('');
-        setStatus('running');
-        setPolling(true);
-        const response = await fetch('/api/run', {
+        const response = await fetch('/api/agent/run-stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({ query: prompt }),
         });
+
         if (!response.ok) {
-          throw new Error('Launching the agent failed.');
+          await fallbackRun();
+          return;
         }
-        const payload = await response.json();
-        setGraphMeta({
-          runId: payload.run_id || payload.runId || null,
-          lastUpdated: new Date().toISOString(),
-        });
-        await refreshGraph(true);
+
+        await consumeStream(response);
       } catch (error) {
-        setGraphError(error.message);
-        setStatus('error');
-        setPolling(false);
+        try {
+          await fallbackRun();
+        } catch (err) {
+          setGraphError(err.message || error.message || 'Unable to launch the agent.');
+          setStatus('error');
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [prompt, refreshGraph],
+    [consumeStream, fallbackRun, prompt],
   );
 
-  useEffect(() => {
-    if (!polling) {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-      return undefined;
-    }
-    pollingRef.current = setInterval(() => {
-      refreshGraph(true);
-    }, 2500);
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, [polling, refreshGraph]);
-
   const downloadGraph = useCallback(() => {
-    const payload = {
+    const payload = snapshotRef.current || {
       nodes,
       edges,
       status,
       report,
-      runId: graphMeta.runId,
-      lastUpdated: graphMeta.lastUpdated,
+      metadata,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -198,7 +255,7 @@ function App() {
     link.download = 'agent-graph.json';
     link.click();
     URL.revokeObjectURL(url);
-  }, [edges, graphMeta.lastUpdated, graphMeta.runId, nodes, report, status]);
+  }, [edges, metadata, nodes, report, status]);
 
   const handleUpload = useCallback((event) => {
     const file = event.target.files?.[0];
@@ -207,21 +264,24 @@ function App() {
     reader.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target.result);
+        snapshotRef.current = parsed;
+        if (parsed.reasoning_tree) {
+          applySnapshot(parsed);
+          setUploadError('');
+          return;
+        }
         setNodes(parsed.nodes || []);
         setEdges(parsed.edges || []);
         setStatus(parsed.status || 'imported');
         setReport(parsed.report || '');
-        setGraphMeta({
-          runId: parsed.runId || parsed.run_id || null,
-          lastUpdated: parsed.lastUpdated || new Date().toISOString(),
-        });
+        setMetadata(parsed.metadata || {});
         setUploadError('');
       } catch (err) {
         setUploadError('The uploaded file is not a valid graph JSON.');
       }
     };
     reader.readAsText(file);
-  }, []);
+  }, [applySnapshot]);
 
   const activeNodeDetails = useMemo(() => {
     if (!selectedNode) return null;
@@ -230,7 +290,7 @@ function App() {
       state: selectedNode.data?.state || selectedNode.state,
       reasoning: selectedNode.data?.reasoning,
       tools: selectedNode.data?.tools || [],
-      intermediates: selectedNode.data?.intermediates || {},
+      toolCalls: selectedNode.data?.toolCalls || [],
       summary: selectedNode.data?.summary,
     };
   }, [selectedNode]);
@@ -249,10 +309,7 @@ function App() {
         </div>
         <div className="status-group">
           <span className={statusClass}>{statusLabel}</span>
-          {polling ? <span className="pulse">Live polling…</span> : <span className="muted">Waiting</span>}
-          {graphMeta.lastUpdated && (
-            <span className="muted">Last sync: {new Date(graphMeta.lastUpdated).toLocaleTimeString()}</span>
-          )}
+          <span className="muted">{metadata.updated_at ? `Last sync: ${new Date(metadata.updated_at).toLocaleTimeString()}` : 'Waiting'}</span>
         </div>
       </header>
 
@@ -262,7 +319,7 @@ function App() {
             <div>
               <p className="eyebrow">New run</p>
               <h2>Launch a fresh reasoning session</h2>
-              <p className="muted">Send a prompt to the backend, then follow the live graph updates.</p>
+              <p className="muted">Send a prompt to the backend at /api/agent/run-stream, then follow the live graph updates.</p>
             </div>
           </div>
           <form className="prompt-row" onSubmit={handleRun}>
@@ -276,10 +333,25 @@ function App() {
               {isLoading ? 'Launching…' : 'Launch'}
             </button>
           </form>
+          <div className="meta-grid">
+            <div>
+              <p className="muted">Query</p>
+              <strong>{metadata.query || '—'}</strong>
+            </div>
+            <div>
+              <p className="muted">Nodes</p>
+              <strong>{metadata.node_count ?? nodes.length}</strong>
+            </div>
+            <div>
+              <p className="muted">Edges</p>
+              <strong>{metadata.edge_count ?? edges.length}</strong>
+            </div>
+            <div>
+              <p className="muted">Updated</p>
+              <strong>{metadata.updated_at ? new Date(metadata.updated_at).toLocaleTimeString() : '—'}</strong>
+            </div>
+          </div>
           <div className="actions">
-            <button type="button" onClick={() => refreshGraph(false)} className="ghost">
-              Refresh graph
-            </button>
             <button type="button" onClick={() => setShowReport((prev) => !prev)} className="ghost">
               {showReport ? 'Hide report' : 'Show report'}
             </button>
@@ -312,13 +384,10 @@ function App() {
           <div className="panel-head">
             <div>
               <p className="eyebrow">Graph</p>
-              <h2>React Flow view</h2>
-              <p className="muted">
-                Nodes and edges refresh automatically while the backend reports <span className="badge">running</span>.
-              </p>
+              <h2>Reasoning tree</h2>
+              <p className="muted">Nodes reflect the backend reasoning_tree payload; edges follow parent_leaf links.</p>
             </div>
             <div className="badges">
-              <span className="badge">Run ID: {graphMeta.runId || 'pending'}</span>
               <span className="badge">Edges: {styledEdges.length}</span>
               <span className="badge">Nodes: {styledNodes.length}</span>
             </div>
@@ -367,29 +436,22 @@ function App() {
             </div>
             <div className="detail-block">
               <h4>Tools</h4>
-              {activeNodeDetails?.tools?.length ? (
+              {activeNodeDetails?.toolCalls?.length ? (
                 <ul>
-                  {activeNodeDetails.tools.map((tool) => (
-                    <li key={tool}>{tool}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="muted">No tools recorded.</p>
-              )}
-            </div>
-            <div className="detail-block">
-              <h4>Intermediate values</h4>
-              {activeNodeDetails?.intermediates &&
-              Object.keys(activeNodeDetails.intermediates).length ? (
-                <ul>
-                  {Object.entries(activeNodeDetails.intermediates).map(([key, value]) => (
-                    <li key={key}>
-                      <strong>{key}:</strong> {String(value)}
+                  {activeNodeDetails.toolCalls.map((tool) => (
+                    <li key={tool.tool_name}>
+                      <strong>{tool.tool_name}</strong>
+                      {tool.args && (
+                        <span className="muted"> — args: {JSON.stringify(tool.args)}</span>
+                      )}
+                      {tool.result !== undefined && (
+                        <div className="tool-result">Result: {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result)}</div>
+                      )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="muted">No intermediate values.</p>
+                <p className="muted">No tools recorded.</p>
               )}
             </div>
           </div>
