@@ -1,265 +1,2323 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Agent Graph Studio — v2</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Agent Graph Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      /* ═══════════════════════════════════════════════════
+   DESIGN SYSTEM — "Obsidian Terminal"
+   Dark, information-dense, research-grade UI.
+   Warm neutrals with electric accent highlights.
+   ═══════════════════════════════════════════════════ */
+
+      :root {
+        --bg-0: #07090f;
+        --bg-1: #0c1017;
+        --bg-2: #11151f;
+        --bg-3: #171d2a;
+        --bg-4: #1e2536;
+        --border-0: #1a2035;
+        --border-1: #252d42;
+        --border-2: #303a54;
+        --text-0: #f0f2f7;
+        --text-1: #c4c9d8;
+        --text-2: #8892a8;
+        --text-3: #5a6480;
+        --text-4: #3d4660;
+        --accent: #6c8cff;
+        --accent-dim: #4a64cc;
+        --accent-glow: rgba(108, 140, 255, 0.15);
+        --green: #3dd68c;
+        --green-dim: rgba(61, 214, 140, 0.12);
+        --amber: #f0a040;
+        --amber-dim: rgba(240, 160, 64, 0.12);
+        --red: #f06060;
+        --red-dim: rgba(240, 96, 96, 0.12);
+        --violet: #a78bfa;
+        --violet-dim: rgba(167, 139, 250, 0.12);
+        --cyan: #40c4e0;
+        --cyan-dim: rgba(64, 196, 224, 0.12);
+        --font: 'Outfit', system-ui, -apple-system, sans-serif;
+        --mono: 'JetBrains Mono', ui-monospace, monospace;
+        --radius: 10px;
+        --radius-lg: 14px;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.5);
+        --transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        font-family: var(--font);
+        font-size: 13px;
+        color: var(--text-1);
+        background: var(--bg-0);
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+      }
+
+      /* ── Scrollbar ── */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-1);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-2);
+      }
+
+      /* ── Layout Shell ── */
+      .shell {
+        display: grid;
+        grid-template-rows: 52px 1fr;
+        grid-template-columns: 280px 1fr;
+        grid-template-areas: 'top top' 'side main';
+        height: 100vh;
+      }
+
+      /* ── Top Bar ── */
+      .topbar {
+        grid-area: top;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        background: var(--bg-1);
+        border-bottom: 1px solid var(--border-0);
+        z-index: 100;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-right: 16px;
+        border-right: 1px solid var(--border-0);
+        flex-shrink: 0;
+      }
+      .brand-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--accent), var(--violet));
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+        font-size: 13px;
+        color: white;
+        box-shadow: 0 0 16px rgba(108, 140, 255, 0.25);
+      }
+      .brand-name {
+        font-weight: 800;
+        font-size: 14px;
+        color: var(--text-0);
+        letter-spacing: -0.3px;
+        white-space: nowrap;
+      }
+
+      .search-row {
+        flex: 1;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      input,
+      select,
+      textarea {
+        font-family: var(--font);
+        font-size: 13px;
+        color: var(--text-0);
+        background: var(--bg-2);
+        border: 1px solid var(--border-0);
+        border-radius: var(--radius);
+        padding: 7px 12px;
+        outline: none;
+        transition: border-color var(--transition);
+      }
+      input:focus,
+      select:focus {
+        border-color: var(--accent-dim);
+        box-shadow: 0 0 0 3px var(--accent-glow);
+      }
+      input::placeholder {
+        color: var(--text-4);
+      }
+
+      .btn {
+        font-family: var(--font);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 7px 14px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-0);
+        background: var(--bg-3);
+        color: var(--text-2);
+        cursor: pointer;
+        transition: all var(--transition);
+        white-space: nowrap;
+        letter-spacing: 0.1px;
+      }
+      .btn:hover {
+        background: var(--bg-4);
+        color: var(--text-1);
+        border-color: var(--border-1);
+      }
+      .btn.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+        color: white;
+        border: none;
+        font-weight: 700;
+      }
+      .btn.primary:hover {
+        filter: brightness(1.1);
+      }
+      .btn.danger {
+        background: var(--red);
+        color: white;
+        border: none;
+      }
+      .btn.danger:hover {
+        filter: brightness(1.1);
+      }
+      .btn.ghost {
+        background: transparent;
+        border: none;
+      }
+
+      .stats {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-left: 12px;
+        border-left: 1px solid var(--border-0);
+        flex-shrink: 0;
+      }
+      .stat {
+        font-size: 11px;
+        color: var(--text-3);
+        font-weight: 500;
+      }
+      .stat b {
+        color: var(--text-2);
+        font-weight: 700;
+      }
+
+      /* ── Sidebar ── */
+      .sidebar {
+        grid-area: side;
+        background: var(--bg-1);
+        border-right: 1px solid var(--border-0);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .side-tabs {
+        display: flex;
+        gap: 2px;
+        padding: 8px 8px 0;
+        border-bottom: 1px solid var(--border-0);
+        flex-shrink: 0;
+      }
+      .side-tab {
+        flex: 1;
+        padding: 8px 6px;
+        text-align: center;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        color: var(--text-3);
+        cursor: pointer;
+        border: none;
+        background: none;
+        border-bottom: 2px solid transparent;
+        transition: all var(--transition);
+        font-family: var(--font);
+      }
+      .side-tab:hover {
+        color: var(--text-2);
+      }
+      .side-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+
+      .side-panel {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+      }
+      .side-panel[hidden] {
+        display: none;
+      }
+
+      /* Settings form */
+      .field {
+        margin-bottom: 12px;
+      }
+      .field-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-2);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .field-hint {
+        font-size: 11px;
+        color: var(--text-4);
+        margin-bottom: 4px;
+      }
+      .field input,
+      .field select {
+        width: 100%;
+      }
+
+      /* ── Main Area ── */
+      .main-area {
+        grid-area: main;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Main tabs */
+      .main-tabs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 16px;
+        border-bottom: 1px solid var(--border-0);
+        background: var(--bg-1);
+        flex-shrink: 0;
+      }
+      .main-tab {
+        padding: 7px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-3);
+        border: none;
+        background: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all var(--transition);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font);
+      }
+      .main-tab:hover {
+        background: var(--bg-3);
+        color: var(--text-2);
+      }
+      .main-tab.active {
+        background: var(--accent-glow);
+        color: var(--accent);
+      }
+      .main-tab .badge {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 99px;
+        background: var(--bg-4);
+        color: var(--text-3);
+        font-weight: 700;
+      }
+      .main-tab.active .badge {
+        background: rgba(108, 140, 255, 0.2);
+        color: var(--accent);
+      }
+
+      .budget-bar {
+        display: flex;
+        gap: 16px;
+        margin-left: auto;
+        align-items: center;
+      }
+      .budget-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 80px;
+      }
+      .budget-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 9px;
+        color: var(--text-4);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+      .budget-track {
+        height: 3px;
+        border-radius: 2px;
+        background: var(--bg-0);
+        overflow: hidden;
+      }
+      .budget-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+
+      /* ── Content Area ── */
+      .content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+      }
+      .content[hidden] {
+        display: none;
+      }
+
+      /* ── Tree View ── */
+      .tree-root {
+        max-width: 720px;
+      }
+      .tree-node {
+        position: relative;
+        margin-left: 0;
+        margin-bottom: 4px;
+      }
+      .tree-node.depth-1 {
+        margin-left: 28px;
+      }
+      .tree-node.depth-2 {
+        margin-left: 56px;
+      }
+      .tree-node.depth-3 {
+        margin-left: 84px;
+      }
+      .tree-node.depth-4 {
+        margin-left: 112px;
+      }
+      .tree-node.depth-5 {
+        margin-left: 140px;
+      }
+
+      .tree-connector {
+        position: absolute;
+        left: -18px;
+        top: 0;
+        width: 14px;
+        border-left: 1px solid var(--border-1);
+        border-bottom: 1px solid var(--border-1);
+        border-bottom-left-radius: 6px;
+        height: 22px;
+      }
+
+      .tree-card {
+        padding: 10px 14px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-0);
+        background: var(--bg-2);
+        cursor: pointer;
+        transition: all var(--transition);
+        position: relative;
+        overflow: hidden;
+      }
+      .tree-card:hover {
+        border-color: var(--border-2);
+        background: var(--bg-3);
+      }
+      .tree-card.selected {
+        border-color: var(--accent-dim);
+        background: rgba(108, 140, 255, 0.05);
+        box-shadow: 0 0 0 1px var(--accent-dim);
+      }
+      .tree-card.final {
+        border-color: rgba(61, 214, 140, 0.3);
+      }
+      .tree-card.root {
+        background: linear-gradient(135deg, var(--bg-3), var(--bg-2));
+        border-color: var(--border-1);
+      }
+      .tree-card.streaming {
+        border-color: var(--accent-dim);
+        animation: stream-pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes stream-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 transparent;
+        }
+        50% {
+          box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+      }
+
+      .tree-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tree-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .tree-dot.done {
+        background: var(--green);
+        box-shadow: 0 0 6px rgba(61, 214, 140, 0.4);
+      }
+      .tree-dot.running {
+        background: var(--accent);
+        box-shadow: 0 0 6px var(--accent-glow);
+        animation: dot-pulse 1s ease-in-out infinite;
+      }
+      .tree-dot.root-dot {
+        background: var(--text-3);
+      }
+      .tree-dot.final-dot {
+        background: var(--green);
+        box-shadow: 0 0 8px rgba(61, 214, 140, 0.5);
+      }
+      @keyframes dot-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      .tree-title {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--text-0);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tree-badges {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+      }
+      .tree-badge {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 99px;
+        font-weight: 600;
+        border: 1px solid var(--border-0);
+      }
+      .tree-badge.tools {
+        color: var(--accent);
+        background: var(--accent-glow);
+        border-color: rgba(108, 140, 255, 0.2);
+      }
+      .tree-badge.facts {
+        color: var(--green);
+        background: var(--green-dim);
+        border-color: rgba(61, 214, 140, 0.2);
+      }
+
+      .tree-preview {
+        font-size: 11.5px;
+        color: var(--text-3);
+        margin-top: 4px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      /* ── Knowledge Base ── */
+      .kb-filters {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      .kb-filter {
+        padding: 4px 10px;
+        border-radius: 99px;
+        border: 1px solid var(--border-0);
+        background: transparent;
+        color: var(--text-3);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all var(--transition);
+        font-family: var(--font);
+      }
+      .kb-filter:hover {
+        border-color: var(--border-2);
+        color: var(--text-2);
+      }
+      .kb-filter.active {
+        border-color: var(--accent-dim);
+        background: var(--accent-glow);
+        color: var(--accent);
+      }
+
+      .kb-card {
+        padding: 10px 12px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-0);
+        background: var(--bg-2);
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: all var(--transition);
+      }
+      .kb-card:hover {
+        border-color: var(--border-1);
+      }
+      .kb-key {
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .kb-value {
+        font-size: 12px;
+        color: var(--text-2);
+        margin-top: 2px;
+      }
+      .kb-meta {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .kb-tag {
+        font-size: 9px;
+        padding: 1px 6px;
+        border-radius: 99px;
+        background: var(--bg-4);
+        color: var(--text-4);
+        font-weight: 500;
+        border: 1px solid var(--border-0);
+      }
+      .kb-confidence {
+        width: 36px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--bg-0);
+        overflow: hidden;
+        margin-left: auto;
+      }
+      .kb-confidence-fill {
+        height: 100%;
+        border-radius: 2px;
+      }
+
+      /* ── Report ── */
+      .report-container {
+        max-width: 740px;
+        margin: 0 auto;
+      }
+      .report-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(61, 214, 140, 0.15);
+        background: linear-gradient(
+          135deg,
+          rgba(61, 214, 140, 0.04),
+          transparent
+        );
+      }
+      .report-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: var(--green-dim);
+        border: 1px solid rgba(61, 214, 140, 0.2);
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .report-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--text-0);
+      }
+      .report-subtitle {
+        font-size: 12px;
+        color: var(--text-3);
+        margin-top: 2px;
+      }
+
+      .report-body {
+        padding: 24px 28px;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-0);
+        background: var(--bg-2);
+      }
+      .report-body h1 {
+        font-size: 22px;
+        font-weight: 800;
+        color: var(--text-0);
+        margin: 24px 0 8px;
+        letter-spacing: -0.5px;
+      }
+      .report-body h1:first-child {
+        margin-top: 0;
+      }
+      .report-body h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-0);
+        margin: 20px 0 6px;
+      }
+      .report-body h3 {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-1);
+        margin: 16px 0 4px;
+      }
+      .report-body p {
+        color: var(--text-1);
+        margin: 6px 0;
+        line-height: 1.7;
+      }
+      .report-body ul,
+      .report-body ol {
+        padding-left: 1.4em;
+        margin: 6px 0;
+      }
+      .report-body li {
+        color: var(--text-1);
+        margin: 3px 0;
+        line-height: 1.6;
+      }
+      .report-body strong {
+        color: var(--text-0);
+        font-weight: 700;
+      }
+      .report-body em {
+        color: var(--text-2);
+      }
+      .report-body code {
+        background: var(--bg-4);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--accent);
+      }
+      .report-body pre {
+        background: var(--bg-0);
+        padding: 12px 14px;
+        border-radius: var(--radius);
+        overflow: auto;
+        margin: 8px 0;
+        border: 1px solid var(--border-0);
+      }
+      .report-body pre code {
+        background: none;
+        padding: 0;
+      }
+      .report-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+      }
+      .report-body th {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 2px solid var(--border-1);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-3);
+        font-weight: 700;
+      }
+      .report-body td {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border-0);
+        color: var(--text-1);
+      }
+      .report-body tr:nth-child(even) td {
+        background: rgba(255, 255, 255, 0.01);
+      }
+      .report-body a {
+        color: var(--accent);
+        text-decoration: none;
+        border-bottom: 1px dashed var(--accent-dim);
+      }
+      .report-body blockquote {
+        border-left: 3px solid var(--accent-dim);
+        padding-left: 14px;
+        margin: 8px 0;
+        color: var(--text-2);
+      }
+
+      .report-sources {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-0);
+      }
+      .report-sources-title {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-4);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .source-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        margin-bottom: 2px;
+      }
+      .source-item:hover {
+        background: var(--bg-3);
+      }
+      .source-icon {
+        font-size: 11px;
+        color: var(--text-4);
+      }
+      .source-text {
+        font-size: 12px;
+        color: var(--text-3);
+        flex: 1;
+      }
+      .source-id {
+        font-size: 10px;
+        color: var(--text-4);
+        font-family: var(--mono);
+      }
+
+      /* ── Inspector (right panel) ── */
+      .inspector-overlay {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 400px;
+        max-width: 100%;
+        background: var(--bg-1);
+        border-left: 1px solid var(--border-0);
+        box-shadow: var(--shadow-lg);
+        z-index: 80;
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .inspector-overlay.open {
+        transform: translateX(0);
+      }
+
+      .inspector-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-0);
+        flex-shrink: 0;
+      }
+      .inspector-title {
+        font-weight: 700;
+        color: var(--text-0);
+        font-size: 13px;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .inspector-close {
+        background: var(--bg-3);
+        border: 1px solid var(--border-0);
+        border-radius: 6px;
+        padding: 3px 10px;
+        color: var(--text-3);
+        cursor: pointer;
+        font-size: 12px;
+        font-family: var(--font);
+      }
+      .inspector-close:hover {
+        background: var(--bg-4);
+        color: var(--text-2);
+      }
+
+      .inspector-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 16px;
+      }
+      .inspector-section {
+        margin-bottom: 16px;
+      }
+      .inspector-section-title {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        color: var(--text-4);
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .inspector-result {
+        padding: 12px 14px;
+        border-radius: var(--radius);
+        background: var(--bg-0);
+        border: 1px solid var(--border-0);
+        font-size: 12.5px;
+        line-height: 1.6;
+        color: var(--text-1);
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .tool-card {
+        border-radius: var(--radius);
+        border: 1px solid var(--border-0);
+        overflow: hidden;
+        margin-bottom: 6px;
+      }
+      .tool-head {
+        padding: 7px 10px;
+        background: var(--bg-3);
+        border-bottom: 1px solid var(--border-0);
+        font-weight: 700;
+        font-size: 12px;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .tool-body {
+        padding: 8px 10px;
+      }
+      .tool-label {
+        font-size: 10px;
+        color: var(--text-4);
+        margin-bottom: 2px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .tool-pre {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text-2);
+        background: var(--bg-0);
+        padding: 6px 8px;
+        border-radius: 6px;
+        overflow: auto;
+        max-height: 120px;
+        margin-top: 2px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .fact-pill {
+        padding: 6px 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .fact-pill-icon {
+        font-size: 12px;
+      }
+      .fact-pill-text {
+        font-size: 12px;
+        color: var(--text-2);
+      }
+      .fact-pill-text b {
+        font-weight: 700;
+      }
+
+      /* Annotation */
+      .annotation-box {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-0);
+      }
+      .annotation-textarea {
+        width: 100%;
+        min-height: 60px;
+        resize: vertical;
+        font-family: var(--font);
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: var(--radius);
+        background: var(--bg-0);
+        border: 1px solid var(--border-0);
+        color: var(--text-1);
+        line-height: 1.5;
+      }
+      .annotation-textarea:focus {
+        border-color: var(--accent-dim);
+        box-shadow: 0 0 0 2px var(--accent-glow);
+      }
+      .annotation-saved {
+        font-size: 10px;
+        color: var(--green);
+        margin-top: 4px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      .annotation-saved.show {
+        opacity: 1;
+      }
+
+      /* ── Timeline Slider ── */
+      .timeline-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--border-0);
+        background: var(--bg-1);
+        flex-shrink: 0;
+      }
+      .timeline-bar[hidden] {
+        display: none;
+      }
+      .timeline-label {
+        font-size: 11px;
+        color: var(--text-3);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .timeline-slider {
+        flex: 1;
+        -webkit-appearance: none;
+        appearance: none;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--bg-0);
+        outline: none;
+        cursor: pointer;
+      }
+      .timeline-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid var(--bg-1);
+        box-shadow: 0 0 8px var(--accent-glow);
+        cursor: pointer;
+      }
+      .timeline-count {
+        font-size: 11px;
+        color: var(--text-4);
+        font-family: var(--mono);
+        min-width: 40px;
+        text-align: right;
+      }
+
+      /* ── Empty State ── */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: 12px;
+        color: var(--text-4);
+      }
+      .empty-icon {
+        font-size: 48px;
+        opacity: 0.25;
+      }
+      .empty-text {
+        font-size: 14px;
+      }
+
+      /* ── Live Stream Badge ── */
+      .live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        background: var(--accent-glow);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        animation: live-glow 2s ease-in-out infinite;
+      }
+      .live-badge[hidden] {
+        display: none;
+      }
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: dot-pulse 1s ease-in-out infinite;
+      }
+      @keyframes live-glow {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 transparent;
+        }
+        50% {
+          box-shadow: 0 0 12px var(--accent-glow);
+        }
+      }
+
+      /* ── Toast ── */
+      .toast-container {
+        position: fixed;
+        top: 60px;
+        right: 16px;
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .toast-item {
+        padding: 10px 14px;
+        border-radius: var(--radius);
+        background: var(--bg-3);
+        border: 1px solid var(--border-1);
+        color: var(--text-1);
+        font-size: 12px;
+        font-weight: 500;
+        box-shadow: var(--shadow);
+        animation: toast-in 0.2s ease-out;
+        border-left: 3px solid var(--accent);
+      }
+      @keyframes toast-in {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ── Node list (sidebar) ── */
+      .node-list-item {
+        padding: 8px 10px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        margin-bottom: 2px;
+        transition: background var(--transition);
+      }
+      .node-list-item:hover {
+        background: var(--bg-3);
+      }
+      .node-list-item.active {
+        background: var(--accent-glow);
+      }
+      .node-list-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .node-list-text {
+        font-size: 12px;
+        color: var(--text-2);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .node-list-id {
+        font-size: 10px;
+        color: var(--text-4);
+        font-family: var(--mono);
+      }
+
+      /* ── Utility ── */
+      .type-numeric {
+        color: var(--accent);
+      }
+      .type-entity {
+        color: var(--violet);
+      }
+      .type-finding {
+        color: var(--green);
+      }
+      .type-constraint {
+        color: var(--amber);
+      }
+      .type-url {
+        color: var(--cyan);
+      }
+      .type-summary {
+        color: var(--amber);
+      }
+      .bg-numeric {
+        background: var(--accent-glow);
+        border-color: rgba(108, 140, 255, 0.2);
+      }
+      .bg-entity {
+        background: var(--violet-dim);
+        border-color: rgba(167, 139, 250, 0.2);
+      }
+      .bg-finding {
+        background: var(--green-dim);
+        border-color: rgba(61, 214, 140, 0.2);
+      }
+      .bg-constraint {
+        background: var(--amber-dim);
+        border-color: rgba(240, 160, 64, 0.2);
+      }
+      .bg-url {
+        background: var(--cyan-dim);
+        border-color: rgba(64, 196, 224, 0.2);
+      }
+      .bg-summary {
+        background: var(--amber-dim);
+        border-color: rgba(240, 160, 64, 0.2);
+      }
+    </style>
   </head>
   <body>
     <div class="shell">
-      <!-- TOPBAR -->
+      <!-- ═══ TOPBAR ═══ -->
       <header class="topbar">
         <div class="brand">
-          <div class="logo" aria-hidden="true"></div>
-          <div class="title">Agent Graph Studio</div>
+          <div class="brand-icon">A</div>
+          <div class="brand-name">Agent Graph Studio</div>
         </div>
-
-        <div class="searchrow">
+        <div class="search-row">
           <input
-            id="query"
-            class="input"
-            placeholder="Ask anything… (⇧⏎ to run)"
+            id="queryInput"
+            style="flex: 1"
+            placeholder="Ask anything… (Shift+Enter to run)"
           />
-          <button id="runBtn" class="btn primary">Run</button>
-        </div>
-
-        <div class="top-controls">
-          <button id="fitBtn" class="btn" title="Fit to content">Fit</button>
-          <button id="zoomInBtn" class="btn" title="Zoom in">＋</button>
-          <button id="zoomOutBtn" class="btn" title="Zoom out">－</button>
-          <button
-            id="exportTreeBtn"
-            class="btn"
-            title="Download the current reasoning tree as JSON"
+          <span id="liveBadge" class="live-badge" hidden
+            ><span class="live-dot"></span> Streaming</span
           >
-            Export
-          </button>
-          <button
-            id="importTreeBtn"
-            class="btn"
-            title="Upload a previously saved reasoning tree"
-          >
-            Import
-          </button>
-          <input
-            type="file"
-            id="importTreeInput"
-            accept="application/json"
-            hidden
-          />
+          <button id="runBtn" class="btn primary">Run ▶</button>
         </div>
-
-        <div class="status" id="status">Ready.</div>
+        <div class="stats">
+          <span class="stat"><b id="statNodes">0</b> nodes</span>
+          <span class="stat"><b id="statTools">0</b> tools</span>
+          <span class="stat"><b id="statFacts">0</b> facts</span>
+          <span class="stat"><b id="statTime">0</b>s</span>
+        </div>
       </header>
 
-      <!-- SIDEBAR -->
+      <!-- ═══ SIDEBAR ═══ -->
       <aside class="sidebar">
-        <div class="side-header">
-          <div class="tabs">
-            <button class="tab active" data-tab="settings">Settings</button>
-            <button class="tab" data-tab="nodes">Nodes</button>
-          </div>
-          <button
-            id="openPalette"
-            class="btn"
-            title="Command palette (Ctrl/Cmd + K)"
-          >
-            ⌘K
+        <div class="side-tabs">
+          <button class="side-tab active" data-panel="settings">
+            Settings
           </button>
+          <button class="side-tab" data-panel="nodes">Nodes</button>
         </div>
-        <div class="side-content" id="tab-nodes" style="display: none">
-          <div class="list" id="nodeList"></div>
-        </div>
-        <div class="side-content" id="tab-settings" style="display: block">
-          <div class="list">
-            <div class="list-item" style="flex-direction: column; gap: 8px">
-              <div style="font-weight: 700">LLM Provider</div>
-              <div class="meta">Choose your LLM service provider</div>
-              <select id="llmProvider" class="input" style="width: 100%">
-                <option value="ollama">Ollama</option>
-                <option value="openai">OpenAI</option>
-                <option value="mistral">Mistral AI</option>
-              </select>
+        <div class="side-panel" id="panel-settings">
+          <div class="field">
+            <div class="field-label">Provider</div>
+            <select id="cfgProvider">
+              <option value="ollama">Ollama</option>
+              <option value="openai">OpenAI</option>
+              <option value="mistral">Mistral AI</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Model</div>
+            <input id="cfgModel" value="llama3.2:latest" />
+          </div>
+          <div class="field">
+            <div class="field-label">Provider URL</div>
+            <input id="cfgUrl" value="http://127.0.0.1:11434" />
+          </div>
+          <div class="field">
+            <div class="field-label">API Key</div>
+            <input id="cfgApiKey" type="password" placeholder="Optional" />
+          </div>
+          <div
+            style="
+              border-top: 1px solid var(--border-0);
+              padding-top: 12px;
+              margin-top: 8px;
+            "
+          >
+            <div class="field-label" style="margin-bottom: 8px">Budget</div>
+            <div class="field">
+              <div class="field-hint">Max nodes</div>
+              <input id="cfgMaxNodes" type="number" value="50" />
             </div>
-            <div class="list-item" style="flex-direction: column; gap: 8px">
-              <div style="font-weight: 700">Model Name</div>
-              <div class="meta">Name of the model to use</div>
-              <input
-                id="modelName"
-                class="input"
-                value="llama3.2:latest"
-                style="width: 100%"
-              />
+            <div class="field">
+              <div class="field-hint">Max depth</div>
+              <input id="cfgMaxDepth" type="number" value="6" />
             </div>
-            <div class="list-item" style="flex-direction: column; gap: 8px">
-              <div style="font-weight: 700">Provider URL</div>
-              <div class="meta">API endpoint for your chosen provider</div>
-              <input
-                id="providerUrl"
-                class="input"
-                value="http://127.0.0.1:11434"
-                style="width: 100%"
-              />
-            </div>
-            <div class="list-item" style="flex-direction: column; gap: 8px">
-              <div style="font-weight: 700">API Key</div>
-              <div class="meta">
-                Authentication key for the provider (if required)
-              </div>
-              <input
-                id="apiKey"
-                class="input"
-                type="password"
-                placeholder="Enter your API key"
-                value=""
-                style="width: 100%"
-              />
+            <div class="field">
+              <div class="field-hint">Timeout (s)</div>
+              <input id="cfgTimeout" type="number" value="300" />
             </div>
           </div>
+          <div style="margin-top: 12px; display: flex; gap: 6px">
+            <button class="btn" id="exportBtn" style="flex: 1">
+              Export JSON
+            </button>
+            <button class="btn" id="importBtn" style="flex: 1">
+              Import JSON
+            </button>
+            <input type="file" id="importFile" accept=".json" hidden />
+          </div>
         </div>
-        <div class="side-footer">
-          <button id="clearBtn" class="btn">Clear</button>
+        <div class="side-panel" id="panel-nodes" hidden>
+          <div id="nodeList"></div>
+          <div id="nodeListEmpty" class="empty-state" style="padding: 40px 0">
+            <div class="empty-icon">🌳</div>
+            <div class="empty-text" style="font-size: 12px">
+              Run the agent to see nodes
+            </div>
+          </div>
         </div>
       </aside>
 
-      <!-- MAIN / CANVAS -->
-      <main class="main">
-        <div class="canvas-toolbar">
-          <button id="hudFit" class="icon-btn" title="Fit">⌗</button>
-          <button id="hudZoomIn" class="icon-btn" title="Zoom in">＋</button>
-          <button id="hudZoomOut" class="icon-btn" title="Zoom out">－</button>
-        </div>
-        <div class="minimap"><svg id="minimap" viewBox="0 0 100 60"></svg></div>
-        <div
-          id="liveStream"
-          class="live-stream is-hidden"
-          aria-live="polite"
-          aria-atomic="false"
-        >
-          <div class="live-header">
-            <span class="live-pulse" aria-hidden="true"></span>
-            <div class="live-copy">
-              <div id="liveTitle" class="live-title">Live reasoning</div>
-              <div id="liveSubtitle" class="live-subtitle">
-                Waiting for the agent to begin…
+      <!-- ═══ MAIN ═══ -->
+      <main class="main-area">
+        <!-- Main tabs + budget -->
+        <div class="main-tabs">
+          <button class="main-tab active" data-content="tree">
+            🌳 Reasoning Tree
+          </button>
+          <button class="main-tab" data-content="knowledge">
+            🧠 Knowledge <span class="badge" id="kbCount">0</span>
+          </button>
+          <button class="main-tab" data-content="report">📋 Report</button>
+          <div class="budget-bar">
+            <div class="budget-item">
+              <div class="budget-label">
+                <span>Nodes</span><span id="budgetNodesText">0/50</span>
+              </div>
+              <div class="budget-track">
+                <div
+                  class="budget-fill"
+                  id="budgetNodesFill"
+                  style="width: 0%; background: var(--accent)"
+                ></div>
               </div>
             </div>
-            <div class="live-controls" role="group" aria-label="Live reasoning controls">
-              <button
-                id="collapseLive"
-                class="live-btn"
-                type="button"
-                aria-pressed="false"
-                aria-controls="liveStream"
-                title="Collapse live reasoning"
-              >
-                Collapse
-              </button>
-              <button
-                id="hideLive"
-                class="live-btn"
-                type="button"
-                aria-controls="liveStream"
-                title="Hide live reasoning"
-              >
-                Hide
-              </button>
+            <div class="budget-item">
+              <div class="budget-label">
+                <span>Tools</span><span id="budgetToolsText">0/100</span>
+              </div>
+              <div class="budget-track">
+                <div
+                  class="budget-fill"
+                  id="budgetToolsFill"
+                  style="width: 0%; background: var(--violet)"
+                ></div>
+              </div>
             </div>
-          </div>
-          <div id="liveEvents" class="live-events"></div>
-        </div>
-        <button
-          id="liveToggle"
-          class="live-toggle is-hidden"
-          type="button"
-          aria-controls="liveStream"
-          aria-expanded="false"
-        >
-          Show live reasoning
-        </button>
-        <div id="viewport" class="viewport">
-          <div class="layers">
-            <svg
-              id="edges"
-              class="edges"
-              xmlns="http://www.w3.org/2000/svg"
-            ></svg>
-            <div id="nodesLayer" class="nodes"></div>
+            <div class="budget-item">
+              <div class="budget-label">
+                <span>Time</span><span id="budgetTimeText">0s/300s</span>
+              </div>
+              <div class="budget-track">
+                <div
+                  class="budget-fill"
+                  id="budgetTimeFill"
+                  style="width: 0%; background: var(--amber)"
+                ></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- RIGHT DRAWER: NODE INSPECTOR -->
-        <aside id="nodePanel" class="drawer hidden" aria-hidden="true">
-          <div class="drawer-header">
-            <span id="nodePanelTitle">Node details</span>
-            <div style="display: flex; gap: 8px; align-items: center">
-              <span class="kbd">Esc</span>
-              <button id="closeNode" class="btn">Close</button>
-            </div>
-          </div>
-          <pre id="nodeContent" class="drawer-body"></pre>
-        </aside>
+        <!-- Timeline slider -->
+        <div class="timeline-bar" id="timelineBar" hidden>
+          <span class="timeline-label">Timeline</span>
+          <input
+            type="range"
+            class="timeline-slider"
+            id="timelineSlider"
+            min="0"
+            max="0"
+            value="0"
+          />
+          <span class="timeline-count" id="timelineCount">0/0</span>
+          <button
+            class="btn ghost"
+            id="timelinePlay"
+            style="font-size: 14px; padding: 4px 8px"
+          >
+            ▶
+          </button>
+        </div>
 
-        <!-- BOTTOM DRAWER: FINAL ANSWER -->
-        <section class="bottom" id="finalDrawer" aria-expanded="true">
-          <div class="bottom-header">
-            <span>Final Answer</span>
-            <div class="bottom-actions">
-              <button id="copyFinal" class="btn" title="Copy">Copy</button>
-              <button id="btnHideFinal" class="btn">Hide</button>
-              <button id="btnExpandFinal" class="btn">Expand</button>
-              <button id="btnMaxFinal" class="btn">Max</button>
+        <!-- Tab contents -->
+        <div class="content" id="content-tree">
+          <div class="tree-root" id="treeContainer"></div>
+          <div id="treeEmpty" class="empty-state">
+            <div class="empty-icon">🌳</div>
+            <div class="empty-text">
+              Enter a query and press Run to start reasoning
             </div>
           </div>
-          <div id="finalContent" class="bottom-body">No answer yet.</div>
-        </section>
+        </div>
+        <div class="content" id="content-knowledge" hidden>
+          <div style="max-width: 600px">
+            <div class="kb-filters" id="kbFilters"></div>
+            <div id="kbList"></div>
+            <div id="kbEmpty" class="empty-state">
+              <div class="empty-icon">🧠</div>
+              <div class="empty-text">No facts discovered yet</div>
+            </div>
+          </div>
+        </div>
+        <div class="content" id="content-report" hidden>
+          <div class="report-container">
+            <div id="reportContent"></div>
+            <div id="reportEmpty" class="empty-state">
+              <div class="empty-icon">📋</div>
+              <div class="empty-text">Run the agent to generate a report</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inspector overlay -->
+        <div class="inspector-overlay" id="inspector">
+          <div class="inspector-header">
+            <div class="tree-dot done" id="inspectorDot"></div>
+            <div class="inspector-title" id="inspectorTitle">Node details</div>
+            <button class="inspector-close" id="inspectorClose">✕ Esc</button>
+          </div>
+          <div class="inspector-body" id="inspectorBody"></div>
+        </div>
       </main>
     </div>
 
-    <!-- COMMAND PALETTE MODAL -->
-    <div id="palette" class="modal-overlay">
-      <div
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Command palette"
-      >
-        <div class="modal-header">
-          <input
-            id="paletteSearch"
-            class="input"
-            placeholder="Type a command…"
-          />
-          <span class="kbd">Esc</span>
+    <!-- Toast container -->
+    <div class="toast-container" id="toasts"></div>
+
+    <script>
+      // ═══════════════════════════════════════════════════════════
+      // APP STATE
+      // ═══════════════════════════════════════════════════════════
+
+      const BASE_URL = 'http://localhost:8000';
+
+      const state = {
+        tree: {}, // leaf_id -> leaf object
+        facts: [], // knowledge base facts
+        budget: {
+          nodes_used: 0,
+          nodes_max: 50,
+          tool_calls_used: 0,
+          tool_calls_max: 100,
+          elapsed_seconds: 0,
+          timeout_seconds: 300,
+        },
+        finalAnswer: null,
+        query: '',
+        selectedNodeId: null,
+        isRunning: false,
+        annotations: {}, // leaf_id -> string
+        // Timeline
+        history: [], // ordered list of leaf_ids as they were added
+        timelinePos: -1, // -1 = show all
+        timelineAnimating: false,
+      };
+
+      // ═══════════════════════════════════════════════════════════
+      // DOM REFS
+      // ═══════════════════════════════════════════════════════════
+
+      const $ = (id) => document.getElementById(id);
+      const queryInput = $('queryInput');
+      const runBtn = $('runBtn');
+      const liveBadge = $('liveBadge');
+      const treeContainer = $('treeContainer');
+      const treeEmpty = $('treeEmpty');
+      const kbFilters = $('kbFilters');
+      const kbList = $('kbList');
+      const kbEmpty = $('kbEmpty');
+      const reportContent = $('reportContent');
+      const reportEmpty = $('reportEmpty');
+      const inspector = $('inspector');
+      const inspectorBody = $('inspectorBody');
+      const inspectorTitle = $('inspectorTitle');
+      const inspectorDot = $('inspectorDot');
+      const inspectorClose = $('inspectorClose');
+      const nodeList = $('nodeList');
+      const nodeListEmpty = $('nodeListEmpty');
+      const timelineBar = $('timelineBar');
+      const timelineSlider = $('timelineSlider');
+      const timelineCount = $('timelineCount');
+      const timelinePlay = $('timelinePlay');
+      const toastBox = $('toasts');
+
+      // ═══════════════════════════════════════════════════════════
+      // UTILITIES
+      // ═══════════════════════════════════════════════════════════
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+      function truncate(s, n = 120) {
+        return s && s.length > n ? s.slice(0, n) + '…' : s || '';
+      }
+      function toast(msg) {
+        const el = document.createElement('div');
+        el.className = 'toast-item';
+        el.textContent = msg;
+        toastBox.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+      }
+      const typeIcons = {
+        numeric: '🔢',
+        entity: '📍',
+        finding: '💡',
+        constraint: '⚠️',
+        url: '🔗',
+        summary: '📄',
+      };
+
+      function getDepth(id) {
+        let d = 0,
+          cur = state.tree[id];
+        while (cur && cur.parent_leaf) {
+          d++;
+          cur = state.tree[cur.parent_leaf];
+          if (d > 20) break;
+        }
+        return d;
+      }
+
+      function getNodeOrder(tree) {
+        // BFS order from root
+        const order = [];
+        const queue = ['leaf_0'];
+        const visited = new Set();
+        while (queue.length) {
+          const id = queue.shift();
+          if (visited.has(id) || !tree[id]) continue;
+          visited.add(id);
+          order.push(id);
+          const children = tree[id].child_leaves || [];
+          for (const c of children) queue.push(c);
+        }
+        return order;
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // PROVIDER DEFAULTS
+      // ═══════════════════════════════════════════════════════════
+
+      const providerDefaults = {
+        ollama: { url: 'http://127.0.0.1:11434', model: 'llama3.2:latest' },
+        openai: { url: 'https://api.openai.com/v1', model: 'gpt-4o' },
+        mistral: {
+          url: 'https://api.mistral.ai',
+          model: 'mistral-medium-2508',
+        },
+      };
+
+      $('cfgProvider').addEventListener('change', () => {
+        const p = $('cfgProvider').value;
+        const d = providerDefaults[p];
+        if (d) {
+          $('cfgModel').value = d.model;
+          $('cfgUrl').value = d.url;
+        }
+      });
+
+      // ═══════════════════════════════════════════════════════════
+      // TAB SWITCHING
+      // ═══════════════════════════════════════════════════════════
+
+      document.querySelectorAll('.side-tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          document
+            .querySelectorAll('.side-tab')
+            .forEach((t) => t.classList.remove('active'));
+          tab.classList.add('active');
+          document
+            .querySelectorAll('.side-panel')
+            .forEach((p) => (p.hidden = true));
+          $('panel-' + tab.dataset.panel).hidden = false;
+        });
+      });
+
+      document.querySelectorAll('.main-tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          document
+            .querySelectorAll('.main-tab')
+            .forEach((t) => t.classList.remove('active'));
+          tab.classList.add('active');
+          document
+            .querySelectorAll('.content')
+            .forEach((c) => (c.hidden = true));
+          $('content-' + tab.dataset.content).hidden = false;
+        });
+      });
+
+      // ═══════════════════════════════════════════════════════════
+      // RENDER: STATS & BUDGET
+      // ═══════════════════════════════════════════════════════════
+
+      function renderStats() {
+        const nodeCount = Object.keys(state.tree).length;
+        const toolCount = Object.values(state.tree).reduce(
+          (a, n) => a + (n.tool_calls?.length || 0),
+          0,
+        );
+        $('statNodes').textContent = nodeCount;
+        $('statTools').textContent = toolCount;
+        $('statFacts').textContent = state.facts.length;
+        $('statTime').textContent = Math.round(
+          state.budget.elapsed_seconds || 0,
+        );
+        $('kbCount').textContent = state.facts.length;
+
+        const b = state.budget;
+        const np = Math.min(100, (b.nodes_used / b.nodes_max) * 100);
+        const tp = Math.min(100, (b.tool_calls_used / b.tool_calls_max) * 100);
+        const ep = Math.min(100, (b.elapsed_seconds / b.timeout_seconds) * 100);
+        $('budgetNodesText').textContent = `${b.nodes_used}/${b.nodes_max}`;
+        $('budgetToolsText').textContent =
+          `${b.tool_calls_used}/${b.tool_calls_max}`;
+        $('budgetTimeText').textContent =
+          `${Math.round(b.elapsed_seconds)}s/${b.timeout_seconds}s`;
+        $('budgetNodesFill').style.width = np + '%';
+        $('budgetNodesFill').style.background =
+          np > 80 ? 'var(--red)' : np > 60 ? 'var(--amber)' : 'var(--accent)';
+        $('budgetToolsFill').style.width = tp + '%';
+        $('budgetToolsFill').style.background =
+          tp > 80 ? 'var(--red)' : tp > 60 ? 'var(--amber)' : 'var(--violet)';
+        $('budgetTimeFill').style.width = ep + '%';
+        $('budgetTimeFill').style.background =
+          ep > 80 ? 'var(--red)' : ep > 60 ? 'var(--amber)' : 'var(--amber)';
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // RENDER: TREE
+      // ═══════════════════════════════════════════════════════════
+
+      function renderTree() {
+        const root = state.tree['leaf_0'];
+        if (!root) {
+          treeContainer.innerHTML = '';
+          treeEmpty.hidden = false;
+          return;
+        }
+        treeEmpty.hidden = true;
+
+        // Determine which nodes to show (timeline)
+        const visibleSet = new Set();
+        if (state.timelinePos >= 0 && state.history.length > 0) {
+          for (
+            let i = 0;
+            i <= state.timelinePos && i < state.history.length;
+            i++
+          ) {
+            visibleSet.add(state.history[i]);
+          }
+        }
+        const useTimeline = visibleSet.size > 0;
+
+        function renderNode(node, depth) {
+          if (useTimeline && !visibleSet.has(node.id)) return '';
+          const isFinal =
+            (node.description || '').toLowerCase() === 'final answer';
+          const isRoot = node.id === 'leaf_0';
+          const isSelected = state.selectedNodeId === node.id;
+          const isLatest =
+            state.history.length > 0 &&
+            state.history[state.history.length - 1] === node.id &&
+            state.isRunning;
+          const toolCount = node.tool_calls?.length || 0;
+          const nodeFacts = state.facts.filter(
+            (f) => f.source_leaf_id === node.id,
+          );
+          const depthClass = depth <= 5 ? `depth-${depth}` : `depth-5`;
+
+          let dotClass = 'tree-dot done';
+          if (isRoot) dotClass = 'tree-dot root-dot';
+          else if (isFinal) dotClass = 'tree-dot final-dot';
+          else if (isLatest) dotClass = 'tree-dot running';
+
+          let cardClass = 'tree-card';
+          if (isSelected) cardClass += ' selected';
+          if (isFinal) cardClass += ' final';
+          if (isRoot) cardClass += ' root';
+          if (isLatest) cardClass += ' streaming';
+
+          const badges = [];
+          if (toolCount)
+            badges.push(
+              `<span class="tree-badge tools">🔧 ${toolCount}</span>`,
+            );
+          if (nodeFacts.length)
+            badges.push(
+              `<span class="tree-badge facts">💡 ${nodeFacts.length}</span>`,
+            );
+          const annotation = state.annotations[node.id];
+          if (annotation)
+            badges.push(
+              `<span class="tree-badge" style="color:var(--amber);background:var(--amber-dim);border-color:rgba(240,160,64,0.2);">📝</span>`,
+            );
+
+          const preview =
+            !isRoot && !isFinal && node.result
+              ? `<div class="tree-preview">${esc(truncate(node.result, 140))}</div>`
+              : '';
+
+          let childrenHtml = '';
+          if (node.child_leaves) {
+            childrenHtml = node.child_leaves
+              .map((cid) => {
+                const child = state.tree[cid];
+                return child ? renderNode(child, depth + 1) : '';
+              })
+              .join('');
+          }
+
+          return `
+      <div class="tree-node ${depthClass}">
+        ${depth > 0 ? '<div class="tree-connector"></div>' : ''}
+        <div class="${cardClass}" data-id="${node.id}">
+          <div class="tree-row">
+            <div class="${dotClass}"></div>
+            <div class="tree-title">${esc(truncate(node.description || 'Untitled', 65))}</div>
+            <div class="tree-badges">${badges.join('')}</div>
+          </div>
+          ${preview}
         </div>
-        <div class="modal-body" id="paletteList">
-          <div class="cmd" data-action="newRun">
-            <span>New run</span><span class="kbd">N</span>
-          </div>
-          <div class="cmd" data-action="fit">
-            <span>Fit to content</span><span class="kbd">F</span>
-          </div>
-          <div class="cmd" data-action="zoomIn">
-            <span>Zoom in</span><span class="kbd">+</span>
-          </div>
-          <div class="cmd" data-action="zoomOut">
-            <span>Zoom out</span><span class="kbd">-</span>
-          </div>
-          <div class="cmd" data-action="clear">
-            <span>Clear canvas</span><span class="kbd">⌫</span>
-          </div>
-          <div class="cmd" data-action="settings">
-            <span>Open settings</span><span class="kbd">,</span>
-          </div>
-        </div>
+        ${childrenHtml}
       </div>
+    `;
+        }
+
+        treeContainer.innerHTML = renderNode(root, 0);
+
+        // Attach click events
+        treeContainer.querySelectorAll('.tree-card').forEach((card) => {
+          card.addEventListener('click', () => openInspector(card.dataset.id));
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // RENDER: NODE LIST (sidebar)
+      // ═══════════════════════════════════════════════════════════
+
+      function renderNodeList() {
+        const order = getNodeOrder(state.tree);
+        if (!order.length) {
+          nodeList.innerHTML = '';
+          nodeListEmpty.hidden = false;
+          return;
+        }
+        nodeListEmpty.hidden = true;
+        nodeList.innerHTML = order
+          .map((id) => {
+            const n = state.tree[id];
+            const isFinal =
+              (n.description || '').toLowerCase() === 'final answer';
+            const dotColor = isFinal
+              ? 'var(--green)'
+              : id === 'leaf_0'
+                ? 'var(--text-4)'
+                : 'var(--accent)';
+            const isActive = state.selectedNodeId === id;
+            return `<div class="node-list-item ${isActive ? 'active' : ''}" data-id="${id}">
+      <div class="node-list-dot" style="background:${dotColor}"></div>
+      <div class="node-list-text">${esc(truncate(n.description || id, 40))}</div>
+      <div class="node-list-id">${id}</div>
+    </div>`;
+          })
+          .join('');
+
+        nodeList.querySelectorAll('.node-list-item').forEach((item) => {
+          item.addEventListener('click', () => openInspector(item.dataset.id));
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // RENDER: KNOWLEDGE BASE
+      // ═══════════════════════════════════════════════════════════
+
+      let kbFilter = 'all';
+
+      function renderKnowledge() {
+        const facts = state.facts;
+        if (!facts.length) {
+          kbFilters.innerHTML = '';
+          kbList.innerHTML = '';
+          kbEmpty.hidden = false;
+          return;
+        }
+        kbEmpty.hidden = true;
+
+        const types = [...new Set(facts.map((f) => f.fact_type))];
+        kbFilters.innerHTML =
+          `<button class="kb-filter ${kbFilter === 'all' ? 'active' : ''}" data-type="all">All (${facts.length})</button>` +
+          types
+            .map(
+              (t) =>
+                `<button class="kb-filter ${kbFilter === t ? 'active' : ''}" data-type="${t}">${typeIcons[t] || ''} ${t} (${facts.filter((f) => f.fact_type === t).length})</button>`,
+            )
+            .join('');
+
+        kbFilters.querySelectorAll('.kb-filter').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            kbFilter = btn.dataset.type;
+            renderKnowledge();
+          });
+        });
+
+        const filtered =
+          kbFilter === 'all'
+            ? facts
+            : facts.filter((f) => f.fact_type === kbFilter);
+        kbList.innerHTML = filtered
+          .map((f, i) => {
+            const conf = f.confidence || 0.8;
+            const confColor =
+              conf > 0.7
+                ? 'var(--green)'
+                : conf > 0.4
+                  ? 'var(--amber)'
+                  : 'var(--red)';
+            const tags = (f.tags || [])
+              .slice(0, 5)
+              .map((t) => `<span class="kb-tag">${esc(t)}</span>`)
+              .join('');
+            return `<div class="kb-card" data-source="${f.source_leaf_id}">
+      <div class="kb-key type-${f.fact_type}">${typeIcons[f.fact_type] || ''} ${esc((f.key || '').replace(/_/g, ' '))}</div>
+      <div class="kb-value">${esc(truncate(String(f.value), 200))}</div>
+      <div class="kb-meta">
+        ${tags}
+        <span class="kb-tag" style="color:var(--text-4)">${f.source_leaf_id}</span>
+        <div class="kb-confidence"><div class="kb-confidence-fill" style="width:${conf * 100}%;background:${confColor}"></div></div>
+      </div>
+    </div>`;
+          })
+          .join('');
+
+        kbList.querySelectorAll('.kb-card').forEach((card) => {
+          card.addEventListener('click', () =>
+            openInspector(card.dataset.source),
+          );
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // RENDER: REPORT
+      // ═══════════════════════════════════════════════════════════
+
+      function renderReport() {
+        const finalNode = Object.values(state.tree).find(
+          (n) => (n.description || '').toLowerCase() === 'final answer',
+        );
+        if (!finalNode || !finalNode.result) {
+          reportContent.innerHTML = '';
+          reportEmpty.hidden = false;
+          return;
+        }
+        reportEmpty.hidden = true;
+
+        const nodeCount = Object.keys(state.tree).length;
+        const html = marked.parse(finalNode.result);
+
+        // Find source nodes (those with web search tool calls)
+        const sourceNodes = Object.values(state.tree).filter((n) =>
+          n.tool_calls?.some((tc) =>
+            ['web_search', 'search_and_read', 'fetch_url'].includes(
+              tc.tool_name,
+            ),
+          ),
+        );
+
+        const sourcesHtml = sourceNodes.length
+          ? `
+    <div class="report-sources">
+      <div class="report-sources-title">Sources & Evidence Trail</div>
+      ${sourceNodes
+        .map(
+          (n) => `<div class="source-item">
+        <span class="source-icon">🔍</span>
+        <span class="source-text">${esc(truncate(n.description || '', 60))}</span>
+        <span class="source-id">${n.id}</span>
+      </div>`,
+        )
+        .join('')}
     </div>
+  `
+          : '';
 
-    <!-- TOASTS -->
-    <div class="toast" id="toast"></div>
+        reportContent.innerHTML = `
+    <div class="report-header">
+      <div class="report-icon">✅</div>
+      <div style="flex:1">
+        <div class="report-title">Research Complete</div>
+        <div class="report-subtitle">${nodeCount - 1} reasoning steps · ${state.facts.length} facts · ${Math.round(state.budget.elapsed_seconds)}s</div>
+      </div>
+      <button class="btn" id="copyReportBtn">📋 Copy</button>
+    </div>
+    <div class="report-body">${html}${sourcesHtml}</div>
+  `;
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="module" src="./main.js"></script>
+        $('copyReportBtn')?.addEventListener('click', () => {
+          navigator.clipboard
+            .writeText(finalNode.result)
+            .then(() => toast('Report copied to clipboard'));
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════
+      // INSPECTOR
+      // ═══════════════════════════════════════════════════════════
+
+      function openInspector(nodeId) {
+        const node = state.tree[nodeId];
+        if (!node) return;
+
+        state.selectedNodeId = nodeId;
+        renderTree();
+        renderNodeList();
+
+        const isFinal =
+          (node.description || '').toLowerCase() === 'final answer';
+        inspectorTitle.textContent = truncate(node.description || 'Node', 45);
+        inspectorDot.className = `tree-dot ${isFinal ? 'final-dot' : 'done'}`;
+
+        const nodeFacts = state.facts.filter(
+          (f) => f.source_leaf_id === nodeId,
+        );
+
+        let html = '';
+
+        // Result section
+        if (node.result) {
+          const resultHtml = isFinal
+            ? marked.parse(node.result)
+            : esc(node.result);
+          html += `<div class="inspector-section">
+      <div class="inspector-section-title">Result</div>
+      <div class="inspector-result ${isFinal ? 'report-body' : ''}">${resultHtml}</div>
+    </div>`;
+        }
+
+        // Tool calls
+        if (node.tool_calls?.length) {
+          html += `<div class="inspector-section">
+      <div class="inspector-section-title">Tool Calls (${node.tool_calls.length})</div>
+      ${node.tool_calls
+        .map((tc) => {
+          const argsStr = JSON.stringify(tc.args || {}, null, 2);
+          const resStr =
+            typeof tc.result === 'string'
+              ? tc.result
+              : JSON.stringify(tc.result || {}, null, 2);
+          return `<div class="tool-card">
+          <div class="tool-head">🔧 ${esc(tc.tool_name)}</div>
+          <div class="tool-body">
+            <div class="tool-label">Args</div>
+            <pre class="tool-pre">${esc(truncate(argsStr, 400))}</pre>
+            ${tc.result != null ? `<div class="tool-label" style="margin-top:6px">Result</div><pre class="tool-pre">${esc(truncate(resStr, 600))}</pre>` : ''}
+          </div>
+        </div>`;
+        })
+        .join('')}
+    </div>`;
+        }
+
+        // Facts
+        if (nodeFacts.length) {
+          html += `<div class="inspector-section">
+      <div class="inspector-section-title">Facts Discovered (${nodeFacts.length})</div>
+      ${nodeFacts
+        .map(
+          (
+            f,
+          ) => `<div class="fact-pill bg-${f.fact_type}" style="border:1px solid;">
+        <span class="fact-pill-icon">${typeIcons[f.fact_type] || ''}</span>
+        <span class="fact-pill-text"><b class="type-${f.fact_type}">${esc((f.key || '').replace(/_/g, ' '))}:</b> ${esc(truncate(String(f.value), 100))}</span>
+      </div>`,
+        )
+        .join('')}
+    </div>`;
+        }
+
+        // Annotation
+        const savedNote = state.annotations[nodeId] || '';
+        html += `<div class="annotation-box">
+    <div class="inspector-section-title">Notes</div>
+    <textarea class="annotation-textarea" id="annotationInput" placeholder="Add your notes about this step…">${esc(savedNote)}</textarea>
+    <div class="annotation-saved" id="annotationSaved">✓ Saved</div>
+  </div>`;
+
+        inspectorBody.innerHTML = html;
+        inspector.classList.add('open');
+
+        // Annotation autosave
+        const textArea = $('annotationInput');
+        let saveTimeout;
+        textArea?.addEventListener('input', () => {
+          clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(() => {
+            state.annotations[nodeId] = textArea.value;
+            const saved = $('annotationSaved');
+            if (saved) {
+              saved.classList.add('show');
+              setTimeout(() => saved.classList.remove('show'), 1500);
+            }
+            renderTree(); // update annotation badge
+          }, 500);
+        });
+      }
+
+      function closeInspector() {
+        inspector.classList.remove('open');
+        state.selectedNodeId = null;
+        renderTree();
+        renderNodeList();
+      }
+
+      inspectorClose.addEventListener('click', closeInspector);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeInspector();
+        if (e.key === 'Enter' && e.shiftKey && !state.isRunning) {
+          e.preventDefault();
+          runAgent();
+        }
+      });
+
+      // ═══════════════════════════════════════════════════════════
+      // TIMELINE
+      // ═══════════════════════════════════════════════════════════
+
+      function updateTimeline() {
+        if (state.history.length < 2) {
+          timelineBar.hidden = true;
+          return;
+        }
+        timelineBar.hidden = false;
+        timelineSlider.max = state.history.length - 1;
+        if (state.timelinePos < 0) {
+          timelineSlider.value = state.history.length - 1;
+          timelineCount.textContent = `${state.history.length}/${state.history.length}`;
+        } else {
+          timelineSlider.value = state.timelinePos;
+          timelineCount.textContent = `${state.timelinePos + 1}/${state.history.length}`;
+        }
+      }
+
+      timelineSlider.addEventListener('input', () => {
+        state.timelinePos = parseInt(timelineSlider.value);
+        timelineCount.textContent = `${state.timelinePos + 1}/${state.history.length}`;
+        renderTree();
+      });
+
+      timelineSlider.addEventListener('change', () => {
+        if (parseInt(timelineSlider.value) >= state.history.length - 1) {
+          state.timelinePos = -1; // show all
+        }
+        renderTree();
+      });
+
+      timelinePlay.addEventListener('click', async () => {
+        if (state.timelineAnimating || state.history.length < 2) return;
+        state.timelineAnimating = true;
+        timelinePlay.textContent = '⏸';
+
+        for (let i = 0; i < state.history.length; i++) {
+          if (!state.timelineAnimating) break;
+          state.timelinePos = i;
+          timelineSlider.value = i;
+          timelineCount.textContent = `${i + 1}/${state.history.length}`;
+          renderTree();
+          await new Promise((r) => setTimeout(r, 600));
+        }
+
+        state.timelinePos = -1;
+        state.timelineAnimating = false;
+        timelinePlay.textContent = '▶';
+        renderTree();
+        updateTimeline();
+      });
+
+      // ═══════════════════════════════════════════════════════════
+      // STREAMING / BACKEND
+      // ═══════════════════════════════════════════════════════════
+
+      let activeController = null;
+
+      function setRunningUI(running) {
+        state.isRunning = running;
+        runBtn.textContent = running ? '⏹ Stop' : 'Run ▶';
+        runBtn.className = running ? 'btn danger' : 'btn primary';
+        liveBadge.hidden = !running;
+      }
+
+      function applySnapshot(snapshot) {
+        if (!snapshot) return;
+
+        // Update tree
+        const rt = snapshot.reasoning_tree;
+        if (rt && typeof rt === 'object') {
+          // Track new nodes for history
+          for (const id of Object.keys(rt)) {
+            if (!state.tree[id]) state.history.push(id);
+          }
+          state.tree = rt;
+        }
+
+        // Update facts from KB
+        if (snapshot.metadata?.knowledge_base?.facts) {
+          state.facts = Object.values(snapshot.metadata.knowledge_base.facts);
+        } else if (snapshot.knowledge_base?.facts) {
+          state.facts = Object.values(snapshot.knowledge_base.facts);
+        }
+        // Fallback: parse facts from the tree's KB data
+        const treeKb = rt?.knowledge_base || snapshot.knowledge_base;
+        if (treeKb?.facts && typeof treeKb.facts === 'object') {
+          state.facts = Object.values(treeKb.facts);
+        }
+
+        // Update budget
+        const b = snapshot.metadata?.budget || snapshot.budget;
+        if (b) state.budget = { ...state.budget, ...b };
+        if (snapshot.metadata) {
+          if (snapshot.metadata.node_count != null)
+            state.budget.nodes_used = snapshot.metadata.node_count;
+          if (snapshot.metadata.edge_count != null) {
+          }
+          if (snapshot.metadata.knowledge_facts != null) {
+          }
+        }
+
+        state.finalAnswer = snapshot.final_answer || null;
+
+        renderAll();
+      }
+
+      function renderAll() {
+        renderStats();
+        renderTree();
+        renderNodeList();
+        renderKnowledge();
+        renderReport();
+        updateTimeline();
+      }
+
+      async function runAgent() {
+        if (state.isRunning) {
+          if (activeController) activeController.abort();
+          setRunningUI(false);
+          toast('Run cancelled');
+          return;
+        }
+
+        const query = queryInput.value.trim();
+        if (!query) {
+          toast('Enter a query first');
+          return;
+        }
+
+        // Reset state
+        state.tree = {};
+        state.facts = [];
+        state.finalAnswer = null;
+        state.history = [];
+        state.timelinePos = -1;
+        state.selectedNodeId = null;
+        closeInspector();
+        renderAll();
+
+        setRunningUI(true);
+        toast('Starting agent…');
+
+        const controller = new AbortController();
+        activeController = controller;
+
+        const payload = {
+          query,
+          llmProvider: $('cfgProvider').value,
+          providerUrl: $('cfgUrl').value,
+          modelName: $('cfgModel').value,
+          apiKey: $('cfgApiKey').value,
+          maxNodes: parseInt($('cfgMaxNodes').value) || 50,
+          maxDepth: parseInt($('cfgMaxDepth').value) || 6,
+          timeoutSeconds: parseFloat($('cfgTimeout').value) || 300,
+        };
+
+        try {
+          const res = await fetch(`${BASE_URL}/api/agent/run-stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+          if (!res.body) throw new Error('No streaming body');
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              buffer += decoder.decode();
+              break;
+            }
+            buffer += decoder.decode(value, { stream: true });
+
+            let idx;
+            while ((idx = buffer.indexOf('\n\n')) !== -1) {
+              const raw = buffer.slice(0, idx);
+              buffer = buffer.slice(idx + 2);
+              let data = '';
+              for (const line of raw.split('\n')) {
+                const t = line.trim();
+                if (t.startsWith('data:')) data += t.slice(5).trim();
+              }
+              if (!data) continue;
+              try {
+                const event = JSON.parse(data);
+                handleEvent(event);
+              } catch {}
+            }
+          }
+          // Process remaining
+          if (buffer.trim()) {
+            try {
+              const event = JSON.parse(buffer.replace(/^data:\s*/, ''));
+              handleEvent(event);
+            } catch {}
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            toast(`Error: ${err.message}`);
+          }
+        } finally {
+          activeController = null;
+          setRunningUI(false);
+          renderAll();
+        }
+      }
+
+      function handleEvent(event) {
+        if (!event || typeof event !== 'object') return;
+
+        if (event.type === 'start') {
+          toast('Agent planning…');
+          return;
+        }
+
+        if (event.type === 'error') {
+          toast(`Error: ${event.error || 'Unknown error'}`);
+          return;
+        }
+
+        if (event.type === 'update' || event.type === 'final') {
+          applySnapshot(event.payload);
+          if (event.type === 'final') {
+            toast('Research complete!');
+          }
+        }
+      }
+
+      runBtn.addEventListener('click', runAgent);
+      queryInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.shiftKey) {
+          e.preventDefault();
+          runAgent();
+        }
+      });
+
+      // ═══════════════════════════════════════════════════════════
+      // EXPORT / IMPORT
+      // ═══════════════════════════════════════════════════════════
+
+      $('exportBtn').addEventListener('click', () => {
+        if (!Object.keys(state.tree).length) {
+          toast('Nothing to export');
+          return;
+        }
+        const data = {
+          version: 2,
+          exported_at: new Date().toISOString(),
+          query: queryInput.value,
+          reasoning_tree: state.tree,
+          facts: state.facts,
+          budget: state.budget,
+          annotations: state.annotations,
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `agent-tree-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Exported');
+      });
+
+      $('importBtn').addEventListener('click', () => $('importFile').click());
+      $('importFile').addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (data.reasoning_tree) state.tree = data.reasoning_tree;
+          if (data.facts) state.facts = data.facts;
+          if (data.budget) state.budget = { ...state.budget, ...data.budget };
+          if (data.annotations) state.annotations = data.annotations;
+          if (data.query) queryInput.value = data.query;
+          state.history = getNodeOrder(state.tree);
+          state.timelinePos = -1;
+          renderAll();
+          toast(`Imported ${Object.keys(state.tree).length} nodes`);
+        } catch (err) {
+          toast('Import failed: ' + err.message);
+        }
+        e.target.value = '';
+      });
+
+      // ═══════════════════════════════════════════════════════════
+      // INIT
+      // ═══════════════════════════════════════════════════════════
+
+      renderAll();
+    </script>
   </body>
 </html>

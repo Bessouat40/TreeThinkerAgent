@@ -1,3 +1,12 @@
+"""
+Updated API router.
+
+Changes from original:
+- Streaming payloads now include knowledge_base facts and budget info
+- Added GET /api/agent/health endpoint
+- Cleaned up imports
+"""
+
 import asyncio
 import json
 import os
@@ -7,17 +16,20 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.backend.api.tools.web import fetch_url, web_search
+from app.backend.api.tools.web import fetch_url, web_search, search_and_read
 from app.backend.core.agent.agent_manager import AgentManager
 from app.backend.core.agent.llm import LLM
 from app.backend.core.agent.mistralLlm import MistralLLM
 from app.backend.core.agent.ollamaLlm import OllamaLLM
 from app.backend.core.agent.openaiLlm import OpenAILLM
 from app.backend.core.agent.tool import tool
+from app.backend.core.reasoningTree.reasoning_tree import TreeBudget
 
 
 router = APIRouter(tags=["Agent"])
 
+
+# ── Example tool ──────────────────────────────────────────
 
 class AddArgs(BaseModel):
     a: int
@@ -26,9 +38,10 @@ class AddArgs(BaseModel):
 
 @tool("add_a_b", AddArgs, "Add two integers and return their sum")
 def add_a_b(args: AddArgs) -> dict:
-    """Simple example tool used for testing the tool registration pipeline."""
     return {"sum": args.a + args.b}
 
+
+# ── Request model ─────────────────────────────────────────
 
 class AgentRequest(BaseModel):
     query: str
@@ -36,7 +49,14 @@ class AgentRequest(BaseModel):
     providerUrl: Optional[str] = None
     modelName: Optional[str] = None
     apiKey: Optional[str] = None
+    # Budget overrides
+    maxNodes: Optional[int] = None
+    maxDepth: Optional[int] = None
+    maxToolCalls: Optional[int] = None
+    timeoutSeconds: Optional[float] = None
 
+
+# ── LLM factory ──────────────────────────────────────────
 
 def _build_llm(
     provider_override: Optional[str] = None,
@@ -44,28 +64,17 @@ def _build_llm(
     model_name_override: Optional[str] = None,
     api_key_override: Optional[str] = None,
 ) -> LLM:
-    """Build the LLM backend based on environment configuration or provided overrides.
-
-    Args:
-        provider_override: optional provider name (e.g. 'openai', 'mistral', 'ollama')
-        provider_url: optional provider URL (kept on the instance for callers to use)
-        model_name_override: optional model name to use for the provider
-    """
     provider = (provider_override or os.getenv("LLM_PROVIDER", "openai")).lower()
 
     if provider == "mistral":
         model_name = model_name_override or os.getenv("MISTRAL_MODEL", "mistral-medium-2508")
-        inst = MistralLLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
-        return inst
-
+        return MistralLLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
     elif provider == "ollama":
         model_name = model_name_override or os.getenv("OLLAMA_MODEL", "gemma3:12b")
-        inst = OllamaLLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
-        return inst
+        return OllamaLLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
 
     model_name = model_name_override or os.getenv("OPENAI_MODEL", "gpt-4o")
-    inst = OpenAILLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
-    return inst
+    return OpenAILLM(model_name=model_name, provider_url=provider_url, api_key=api_key_override)
 
 
 def _init_manager(req: AgentRequest) -> AgentManager:
@@ -79,15 +88,28 @@ def _init_manager(req: AgentRequest) -> AgentManager:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to initialize language model: {exc}") from exc
 
-    for tool_fn in (web_search, fetch_url, add_a_b):
+    for tool_fn in (web_search, fetch_url, search_and_read, add_a_b):
         llm.register_decorated_tool(tool_fn)
 
-    return AgentManager(user_input=req.query, llm=llm)
+    budget = TreeBudget(
+        max_total_nodes=req.maxNodes or 50,
+        max_branch_depth=req.maxDepth or 6,
+        max_total_tool_calls=req.maxToolCalls or 100,
+        timeout_seconds=req.timeoutSeconds or 300.0,
+    )
+
+    return AgentManager(user_input=req.query, llm=llm, budget=budget)
+
+
+# ── Endpoints ─────────────────────────────────────────────
+
+@router.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 @router.post("/run")
 async def run_agent(req: AgentRequest):
-    """Run the autonomous research agent for the provided query."""
     manager = _init_manager(req)
     try:
         result = manager.run()
@@ -98,8 +120,6 @@ async def run_agent(req: AgentRequest):
 
 @router.post("/run-stream")
 async def run_agent_stream(req: AgentRequest):
-    """Stream reasoning tree updates as the agent plans and executes."""
-
     manager = _init_manager(req)
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue[dict] = asyncio.Queue()

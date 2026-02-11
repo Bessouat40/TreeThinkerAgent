@@ -1,17 +1,17 @@
 {
-  "name": "agent-frontend-native",
-  "version": "1.0.0",
-  "description": "Native DAG viewer for the Deep Research Agent",
+  "name": "agent-graph-studio",
+  "version": "2.0.0",
+  "description": "Agent Graph Studio — Reasoning Tree Visualizer",
   "scripts": {
     "start": "npx serve ."
   },
   "keywords": [
     "agent",
-    "dag",
-    "frontend",
-    "llm"
+    "reasoning",
+    "llm",
+    "visualization"
   ],
-  "author": "Roman Bessouat",
+  "author": "",
   "license": "MIT",
   "devDependencies": {
     "serve": "^14.2.1"
